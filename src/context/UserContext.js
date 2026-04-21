@@ -1,67 +1,77 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 
 const UserContext = createContext();
 
 export function UserProvider({ children }) {
-  const [user, setUser]       = useState(null);
+  const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    let active = true; // flag local al closure — no se comparte entre montajes
+  async function fetchProfile(userId) {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    async function fetchProfile(userId) {
-      try {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-        if (active) setProfile(data || null);
-      } catch {
-        // error al cargar perfil — no bloquear
-      } finally {
-        if (active) setLoading(false);
+      if (mountedRef.current) {
+        setProfile(data || null);
+      }
+    } catch {
+      // Si falla el fetch del perfil, no bloquear la carga
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
       }
     }
+  }
 
-    // onAuthStateChange dispara INITIAL_SESSION al instalar → cubre el caso
-    // de verificar sesión inicial Y de escuchar cambios futuros con un solo listener.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!active) return;
+  function handleNoSession() {
+    if (!mountedRef.current) return;
+    setUser(null);
+    setProfile(null);
+    setLoading(false);
+    // Redirigir solo si NO estamos ya en /login (sin depender de router/pathname)
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+  }
 
-        if (session?.user) {
-          setUser(session.user);
-          await fetchProfile(session.user.id);
-        } else {
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-          // Redirigir a login solo si no estamos ya ahí
-          if (typeof window !== 'undefined' &&
-              !window.location.pathname.startsWith('/login')) {
-            window.location.href = '/login';
-          }
-        }
+  useEffect(() => {
+    mountedRef.current = true;
+
+    // 1. Verificar sesión inicial
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mountedRef.current) return;
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id);
+      } else {
+        handleNoSession();
       }
-    );
+    });
 
-    // Safety net: si después de 8s loading sigue en true, forzamos false
-    // para evitar pantalla de carga infinita por errores de red / config
-    const safetyTimer = setTimeout(() => {
-      if (active) setLoading(false);
-    }, 8000);
+    // 2. Escuchar cambios de autenticación (login / logout / refresh)
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return;
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id);
+      } else {
+        handleNoSession();
+      }
+    });
 
     return () => {
-      active = false;
-      subscription.unsubscribe();
-      clearTimeout(safetyTimer);
+      mountedRef.current = false;
+      authListener.subscription.unsubscribe();
     };
-  }, []); // sin dependencias → un solo montaje
+  }, []); // ← Sin dependencias: solo se ejecuta UNA vez al montar
 
   return (
     <UserContext.Provider value={{ user, profile, loading }}>
@@ -73,4 +83,3 @@ export function UserProvider({ children }) {
 export function useUser() {
   return useContext(UserContext);
 }
-
