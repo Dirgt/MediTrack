@@ -434,63 +434,44 @@ export default function ConfiguracionAdmin() {
                   <p style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.2, marginBottom:16 }}>2. Credenciales de Acceso</p>
                   <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
                     <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:24 }}>
-                      <div>
-                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Nombre Completo</label>
-                        <div style={{ position:'relative' }}>
+                      <div className="form-group">
+                        <label className="form-label-premium">Nombre Completo</label>
+                        <div className="form-input-wrapper">
                           <input required type="text" name="full_name" value={formData.full_name} onChange={handleChange}
                             placeholder="Ej: María González" 
-                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
-                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
-                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                            className="form-input-premium"
                           />
-                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>👤</span>
+                          <span className="input-icon">👤</span>
                         </div>
                       </div>
-                      <div>
-                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Correo Electrónico</label>
-                        <div style={{ position:'relative' }}>
+                      <div className="form-group">
+                        <label className="form-label-premium">Correo Electrónico</label>
+                        <div className="form-input-wrapper">
                           <input required type="email" name="email" value={formData.email} onChange={handleChange}
                             placeholder="correo@meditrack.com" 
-                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
-                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
-                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                            className="form-input-premium"
                           />
-                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>📧</span>
+                          <span className="input-icon">📧</span>
                         </div>
                       </div>
                     </div>
 
-                    <div>
-                      <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Contraseña de Acceso</label>
-                      <div style={{ position:'relative' }}>
+                    <div className="form-group">
+                      <label className="form-label-premium">Contraseña de Acceso</label>
+                      <div className="form-input-wrapper">
                         <input required type={showPassword ? 'text' : 'password'} name="password" minLength={6}
                           value={formData.password} onChange={handleChange}
                           placeholder="Mínimo 6 caracteres"
-                          style={{ width:'100%', padding:'16px 56px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
-                          onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
-                          onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                          className="form-input-premium"
                         />
-                        <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>🔐</span>
-                        <button type="button" onClick={() => setShowPassword(p => !p)} style={{
-                          position:'absolute', right:12, top:'50%', transform:'translateY(-50%)',
-                          background:'rgba(15,110,86,0.08)', borderRadius:'10px', width:36, height:36, border:'none', cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s'
-                        }} onMouseOver={e=>e.currentTarget.style.background='rgba(15,110,86,0.15)'} onMouseOut={e=>e.currentTarget.style.background='rgba(15,110,86,0.08)'}>
+                        <span className="input-icon">🔐</span>
+                        <button type="button" onClick={() => setShowPassword(p => !p)} className="form-password-toggle">
                           {showPassword ? '🙈' : '👁️'}
                         </button>
                       </div>
                     </div>
 
-                    <button type="submit" disabled={isSubmitting} style={{
-                      width:'100%', borderRadius:16, height:64, fontSize:16, fontWeight:800, marginTop:8,
-                      display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-                      boxShadow:'0 8px 20px rgba(15,110,86,0.2)',
-                      background: 'linear-gradient(135deg, #084032 0%, #0F6E56 100%)',
-                      color:'white', border:'none', cursor:'pointer', transition:'all 0.3s',
-                      fontFamily:'system-ui, sans-serif', letterSpacing:'0.3px'
-                    }}
-                    onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 24px rgba(15,110,86,0.3)'; }}
-                    onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 20px rgba(15,110,86,0.2)'; }}
-                    >
+                    <button type="submit" disabled={isSubmitting} className="form-btn-premium">
                       {isSubmitting ? (
                         <>
                           <div style={{ width:24, height:24, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .8s linear infinite' }}/>
@@ -604,30 +585,30 @@ export default function ConfiguracionAdmin() {
                               ✏️ Editar Perfil
                             </p>
                             <form onSubmit={handleSaveEdit} style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                              <div>
-                                <label style={labelStyle}>👤 Nombre Completo</label>
-                                <input className="input-glass" value={editForm.nombre_completo}
-                                  onChange={e => setEditForm(p => ({ ...p, nombre_completo: e.target.value }))}
-                                  placeholder="Nombre completo" required
-                                  style={{ fontSize:14, padding:'10px 12px' }} />
+                              <div className="form-group" style={{ marginBottom: '10px' }}>
+                                <label className="form-label-premium">Nombre Completo</label>
+                                <div className="form-input-wrapper">
+                                  <input className="form-input-premium" value={editForm.nombre_completo}
+                                    onChange={e => setEditForm(p => ({ ...p, nombre_completo: e.target.value }))}
+                                    placeholder="Nombre completo" required />
+                                  <span className="input-icon">👤</span>
+                                </div>
                               </div>
-                              <div>
-                                <label style={labelStyle}>🎭 Rol</label>
-                                <select className="input-glass" value={editForm.role}
-                                  onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
-                                  style={{ fontSize:14, padding:'10px 12px' }}>
-                                  {Object.entries(ROLE_CONFIG).map(([r, c]) => (
-                                    <option key={r} value={r}>{c.emoji} {c.label}</option>
-                                  ))}
-                                </select>
+                              <div className="form-group" style={{ marginBottom: '10px' }}>
+                                <label className="form-label-premium">Rol</label>
+                                <div className="form-input-wrapper">
+                                  <select className="form-input-premium" value={editForm.role}
+                                    onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}>
+                                    {Object.entries(ROLE_CONFIG).map(([r, c]) => (
+                                      <option key={r} value={r}>{c.label}</option>
+                                    ))}
+                                  </select>
+                                  <span className="input-icon">🎭</span>
+                                  <div style={{ position:'absolute', right:16, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:14, color:'#64748b' }}>▼</div>
+                                </div>
                               </div>
                               {/* Se eliminaron los campos de meta y comisión por solicitud del usuario */}
-                              <button type="submit" disabled={isSavingEdit} style={{
-                                padding:'10px 18px', borderRadius:12, border:'none', cursor:'pointer',
-                                background: cfg.color, color:'white', fontSize:13, fontWeight:700,
-                                display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                                opacity: isSavingEdit ? 0.7 : 1,
-                              }}>
+                              <button type="submit" disabled={isSavingEdit} className="form-btn-premium" style={{ height: '54px', marginTop: 0 }}>
                                 {isSavingEdit ? (
                                   <><div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Guardando...</>
                                 ) : '💾 Guardar Cambios'}
@@ -667,40 +648,38 @@ export default function ConfiguracionAdmin() {
                                 )}
 
                                 <form onSubmit={handleChangePassword} style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                                  <div style={{ position:'relative' }}>
-                                    <label style={labelStyle}>🔒 Nueva Contraseña</label>
-                                    <input
-                                      type={showPwd ? 'text' : 'password'}
-                                      minLength={6} required
-                                      value={pwdForm.nueva}
-                                      onChange={e => setPwdForm(p => ({ ...p, nueva: e.target.value }))}
-                                      className="input-glass"
-                                      placeholder="Mínimo 6 caracteres"
-                                      style={{ fontSize:14, padding:'10px 44px 10px 12px' }}
-                                    />
-                                    <button type="button" onClick={() => setShowPwd(p => !p)} style={{
-                                      position:'absolute', right:12, bottom:11, background:'none', border:'none',
-                                      cursor:'pointer', fontSize:16, opacity:.5, lineHeight:1
-                                    }}>{showPwd ? '🙈' : '👁️'}</button>
+                                  <div className="form-group" style={{ marginBottom: '10px' }}>
+                                    <label className="form-label-premium">Nueva Contraseña</label>
+                                    <div className="form-input-wrapper">
+                                      <input
+                                        type={showPwd ? 'text' : 'password'}
+                                        minLength={6} required
+                                        value={pwdForm.nueva}
+                                        onChange={e => setPwdForm(p => ({ ...p, nueva: e.target.value }))}
+                                        className="form-input-premium"
+                                        placeholder="Mínimo 6 caracteres"
+                                      />
+                                      <span className="input-icon">🔒</span>
+                                      <button type="button" onClick={() => setShowPwd(p => !p)} className="form-password-toggle">
+                                        {showPwd ? '🙈' : '👁️'}
+                                      </button>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <label style={labelStyle}>🔒 Confirmar Contraseña</label>
-                                    <input
-                                      type={showPwd ? 'text' : 'password'}
-                                      minLength={6} required
-                                      value={pwdForm.confirmar}
-                                      onChange={e => setPwdForm(p => ({ ...p, confirmar: e.target.value }))}
-                                      className="input-glass"
-                                      placeholder="Repite la nueva contraseña"
-                                      style={{ fontSize:14, padding:'10px 12px' }}
-                                    />
+                                  <div className="form-group" style={{ marginBottom: '10px' }}>
+                                    <label className="form-label-premium">Confirmar Contraseña</label>
+                                    <div className="form-input-wrapper">
+                                      <input
+                                        type={showPwd ? 'text' : 'password'}
+                                        minLength={6} required
+                                        value={pwdForm.confirmar}
+                                        onChange={e => setPwdForm(p => ({ ...p, confirmar: e.target.value }))}
+                                        className="form-input-premium"
+                                        placeholder="Repite la nueva contraseña"
+                                      />
+                                      <span className="input-icon">🔒</span>
+                                    </div>
                                   </div>
-                                  <button type="submit" disabled={isSavingPwd} style={{
-                                    padding:'10px 18px', borderRadius:12, border:'none', cursor:'pointer',
-                                    background: '#dc2626', color:'white', fontSize:13, fontWeight:700,
-                                    display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-                                    opacity: isSavingPwd ? 0.7 : 1,
-                                  }}>
+                                  <button type="submit" disabled={isSavingPwd} className="form-btn-premium" style={{ height: '54px', marginTop: 0, background: 'linear-gradient(135deg, #991b1b 0%, #ef4444 100%)', boxShadow: '0 8px 20px rgba(239, 68, 68, 0.2)' }}>
                                     {isSavingPwd ? (
                                       <><div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Actualizando...</>
                                     ) : '🔑 Actualizar Contraseña'}
@@ -954,80 +933,63 @@ export default function ConfiguracionAdmin() {
                 </div>
                 <form onSubmit={handleSaveClient} style={{ padding:'32px' }}>
                   <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
-                    <div>
-                      <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Nombre del Establecimiento</label>
-                      <div style={{ position:'relative' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label-premium">Nombre del Establecimiento</label>
+                      <div className="form-input-wrapper">
                         <input required type="text" value={clientFormData.nombre}
                           onChange={(e) => setClientFormData(p => ({...p, nombre: e.target.value}))}
                           placeholder="Ej: Farmacia Central" 
-                          style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
-                          onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
-                          onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                          className="form-input-premium"
                         />
-                        <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>🏪</span>
+                        <span className="input-icon">🏪</span>
                       </div>
                     </div>
 
                     <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
-                      <div>
-                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Teléfono de Contacto</label>
-                        <div style={{ position:'relative' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label-premium">Teléfono de Contacto</label>
+                        <div className="form-input-wrapper">
                           <input type="text" value={clientFormData.telefono}
                             onChange={(e) => setClientFormData(p => ({...p, telefono: e.target.value}))}
                             placeholder="Ej: 300 123 4567" 
-                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
-                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
-                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                            className="form-input-premium"
                           />
-                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>📞</span>
+                          <span className="input-icon">📞</span>
                         </div>
                       </div>
-                      <div>
-                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Ciudad / Ubicación</label>
-                        <div style={{ position:'relative' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label-premium">Ciudad / Ubicación</label>
+                        <div className="form-input-wrapper">
                           <input type="text" value={clientFormData.ciudad}
                             onChange={(e) => setClientFormData(p => ({...p, ciudad: e.target.value}))}
                             placeholder="Ej: Bogotá" 
-                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
-                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
-                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                            className="form-input-premium"
                           />
-                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>📍</span>
+                          <span className="input-icon">📍</span>
                         </div>
                       </div>
                     </div>
 
-                    <div>
-                      <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Asignar a Vendedor</label>
-                      <div style={{ position:'relative' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label-premium">Asignar a Vendedor</label>
+                      <div className="form-input-wrapper">
                         <select value={clientFormData.vendedor_id}
                           onChange={(e) => setClientFormData(p => ({...p, vendedor_id: e.target.value}))}
-                          style={{ width:'100%', padding:'16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', appearance:'none', cursor:'pointer', boxSizing:'border-box' }}
-                          onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
-                          onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                          className="form-input-premium"
+                          style={{ appearance: 'none', cursor: 'pointer' }}
                         >
                           <option value="" style={{ color:'#64748b' }}>👤 Dejar como Punto Libre</option>
                           {vendedoresList.map(v => (
                             <option key={v.id} value={v.id}>{v.nombre_completo}</option>
                           ))}
                         </select>
-                        <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>🤝</span>
+                        <span className="input-icon">🤝</span>
                         <div style={{ position:'absolute', right:20, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:14, color:'#64748b', background:'#f1f5f9', width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>▼</div>
                       </div>
                     </div>
 
                     <div style={{ marginTop: 8 }}>
-                      <button type="submit" disabled={isSubmittingClient} style={{ 
-                        width:'100%', borderRadius:16, height:64, fontSize:16, fontWeight:800,
-                        display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-                        boxShadow:'0 8px 20px rgba(15,110,86,0.2)',
-                        background: 'linear-gradient(135deg, #084032 0%, #0F6E56 100%)',
-                        color:'white', border:'none', cursor:'pointer', transition:'all 0.3s',
-                        fontFamily:'system-ui, sans-serif', letterSpacing:'0.3px'
-                      }}
-                      onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 24px rgba(15,110,86,0.3)'; }}
-                      onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 20px rgba(15,110,86,0.2)'; }}
-                      >
+                      <button type="submit" disabled={isSubmittingClient} className="form-btn-premium">
                         {isSubmittingClient ? (
                           <>
                             <div style={{ width:24, height:24, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .8s linear infinite' }}/>
