@@ -142,3 +142,112 @@ h1, h2, h3 {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.6; }
 }
+
+/* ── ESTÁNDAR DE FORMULARIOS PREMIUM (MEDITRACK) ── */
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-label-premium {
+  display: block;
+  font-family: system-ui, sans-serif;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.form-input-wrapper {
+  position: relative;
+}
+
+.form-input-wrapper .input-icon {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 20px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.form-input-premium {
+  width: 100%;
+  padding: 16px 16px 16px 48px;
+  border-radius: 16px;
+  border: 2px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 15px;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.3s;
+  font-family: system-ui, sans-serif;
+  box-sizing: border-box;
+}
+
+.form-input-premium:focus {
+  border-color: var(--brand);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(15, 110, 86, 0.1);
+}
+
+.form-btn-premium {
+  width: 100%;
+  border-radius: 16px;
+  height: 64px;
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  box-shadow: 0 8px 20px rgba(15, 110, 86, 0.2);
+  background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand) 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: system-ui, sans-serif;
+  letter-spacing: 0.3px;
+}
+
+.form-btn-premium:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(15, 110, 86, 0.3);
+}
+
+.form-btn-premium:active:not(:disabled) {
+  transform: scale(0.98) translateY(0);
+}
+
+.form-btn-premium:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.form-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 110, 86, 0.08);
+  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.form-password-toggle:hover {
+  background: rgba(15, 110, 86, 0.15);
+}
+

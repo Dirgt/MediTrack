@@ -432,55 +432,74 @@ export default function ConfiguracionAdmin() {
                   </div>
 
                   <p style={{ fontSize:11, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1.2, marginBottom:16 }}>2. Credenciales de Acceso</p>
-                  <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:18 }}>
+                  <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:24 }}>
                       <div>
-                        <label style={labelStyle}>Nombre Completo</label>
+                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Nombre Completo</label>
                         <div style={{ position:'relative' }}>
                           <input required type="text" name="full_name" value={formData.full_name} onChange={handleChange}
-                            className="input-glass" placeholder="Ej: María González" style={{ paddingLeft:46, background: 'white' }} />
-                          <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontSize:18, opacity:.4 }}>👤</span>
+                            placeholder="Ej: María González" 
+                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
+                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
+                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                          />
+                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>👤</span>
                         </div>
                       </div>
                       <div>
-                        <label style={labelStyle}>Correo Electrónico</label>
+                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Correo Electrónico</label>
                         <div style={{ position:'relative' }}>
                           <input required type="email" name="email" value={formData.email} onChange={handleChange}
-                            className="input-glass" placeholder="correo@meditrack.com" style={{ paddingLeft:46, background: 'white' }} />
-                          <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontSize:18, opacity:.4 }}>📧</span>
+                            placeholder="correo@meditrack.com" 
+                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
+                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
+                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                          />
+                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>📧</span>
                         </div>
                       </div>
                     </div>
 
                     <div>
-                      <label style={labelStyle}>Contraseña de Acceso</label>
+                      <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Contraseña de Acceso</label>
                       <div style={{ position:'relative' }}>
                         <input required type={showPassword ? 'text' : 'password'} name="password" minLength={6}
                           value={formData.password} onChange={handleChange}
-                          className="input-glass" placeholder="Min. 6 caracteres"
-                          style={{ paddingRight:50, paddingLeft:46, background: 'white' }} />
-                        <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontSize:18, opacity:.4 }}>🔐</span>
+                          placeholder="Mínimo 6 caracteres"
+                          style={{ width:'100%', padding:'16px 56px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
+                          onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
+                          onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                        />
+                        <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>🔐</span>
                         <button type="button" onClick={() => setShowPassword(p => !p)} style={{
-                          position:'absolute', right:16, top:'50%', transform:'translateY(-50%)',
-                          background:'none', border:'none', cursor:'pointer', fontSize:20, opacity:.5, lineHeight:1
-                        }}>{showPassword ? '🙈' : '👁️'}</button>
+                          position:'absolute', right:12, top:'50%', transform:'translateY(-50%)',
+                          background:'rgba(15,110,86,0.08)', borderRadius:'10px', width:36, height:36, border:'none', cursor:'pointer', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s'
+                        }} onMouseOver={e=>e.currentTarget.style.background='rgba(15,110,86,0.15)'} onMouseOut={e=>e.currentTarget.style.background='rgba(15,110,86,0.08)'}>
+                          {showPassword ? '🙈' : '👁️'}
+                        </button>
                       </div>
                     </div>
 
-                    <button type="submit" disabled={isSubmitting} className="btn-primary" style={{
-                      borderRadius:18, display:'flex', alignItems:'center', justifyContent:'center', gap:12, height:60,
-                      fontSize:16, fontWeight:900, marginTop:10, boxShadow:'0 10px 25px rgba(15,110,86,0.25)',
-                      background: 'linear-gradient(90deg, #084032, #0F6E56)'
-                    }}>
+                    <button type="submit" disabled={isSubmitting} style={{
+                      width:'100%', borderRadius:16, height:64, fontSize:16, fontWeight:800, marginTop:8,
+                      display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+                      boxShadow:'0 8px 20px rgba(15,110,86,0.2)',
+                      background: 'linear-gradient(135deg, #084032 0%, #0F6E56 100%)',
+                      color:'white', border:'none', cursor:'pointer', transition:'all 0.3s',
+                      fontFamily:'system-ui, sans-serif', letterSpacing:'0.3px'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 24px rgba(15,110,86,0.3)'; }}
+                    onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 20px rgba(15,110,86,0.2)'; }}
+                    >
                       {isSubmitting ? (
                         <>
-                          <div style={{ width:22, height:22, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .8s linear infinite' }}/>
+                          <div style={{ width:24, height:24, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .8s linear infinite' }}/>
                           Creando Cuenta...
                         </>
                       ) : (
                         <>
-                          <span>Completar Registro</span>
-                          <span style={{ opacity:.6 }}>➔</span>
+                          <span>Completar Registro de Personal</span>
+                          <span style={{ background:'rgba(255,255,255,0.2)', padding:'4px 8px', borderRadius:8, fontSize:14 }}>➔</span>
                         </>
                       )}
                     </button>
@@ -914,91 +933,114 @@ export default function ConfiguracionAdmin() {
 
             {/* Form crear/editar cliente */}
             {showClientForm && (
-              <div style={{ marginBottom:32, borderRadius:28, overflow:'hidden', boxShadow:'0 12px 40px rgba(15,110,86,0.15)', border:'1px solid rgba(255,255,255,0.4)', animation:'popIn .4s ease' }}>
-                <div style={{ background:'linear-gradient(135deg, #084032 0%, #0F6E56 100%)', padding:'24px 28px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🏪</div>
+              <div style={{ marginBottom:32, borderRadius:24, overflow:'hidden', boxShadow:'0 20px 40px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)', background:'white', animation:'popIn .4s cubic-bezier(0.16, 1, 0.3, 1)', border:'1px solid rgba(15,110,86,0.1)' }}>
+                <div style={{ background:'linear-gradient(135deg, #084032 0%, #0F6E56 100%)', padding:'28px 32px', display:'flex', justifyContent:'space-between', alignItems:'center', position:'relative', overflow:'hidden' }}>
+                  <div style={{ position:'absolute', top:-30, right:-30, width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.06)' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, position:'relative', zIndex:1 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: 16, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, boxShadow:'0 4px 12px rgba(0,0,0,0.1)' }}>🏪</div>
                     <div>
-                      <p style={{ color:'white', fontWeight:900, fontSize:19, margin:0, letterSpacing:'-0.4px' }}>
+                      <h2 style={{ color:'white', fontWeight:800, fontSize:22, margin:0, letterSpacing:'-0.5px' }}>
                         {editingClientId ? 'Editar Cliente' : 'Nuevo Punto de Venta'}
-                      </p>
-                      <p style={{ color:'rgba(255,255,255,0.75)', fontSize:12, margin:'2px 0 0', fontWeight:500 }}>
-                        {editingClientId ? 'Modifica la información del cliente' : 'Registra un nuevo establecimiento'}
+                      </h2>
+                      <p style={{ color:'rgba(255,255,255,0.8)', fontSize:13, margin:'4px 0 0', fontWeight:500 }}>
+                        {editingClientId ? 'Modifica la información del cliente' : 'Registra un nuevo establecimiento en el sistema'}
                       </p>
                     </div>
                   </div>
                   <button onClick={() => { setShowClientForm(false); setEditingClientId(null); }} style={{
-                    width:36, height:36, borderRadius:'12px', background:'rgba(255,255,255,0.1)',
-                    border:'1px solid rgba(255,255,255,0.2)', color:'white', cursor:'pointer', fontSize:20, display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s'
-                  }}>×</button>
+                    width:36, height:36, borderRadius:'12px', background:'rgba(255,255,255,0.15)',
+                    border:'none', color:'white', cursor:'pointer', fontSize:20, display:'flex', alignItems:'center', justifyContent:'center', transition:'all .2s', position:'relative', zIndex:1
+                  }} onMouseOver={e => e.currentTarget.style.background='rgba(255,255,255,0.25)'} onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}>×</button>
                 </div>
-                <form onSubmit={handleSaveClient} style={{ background:'rgba(255,255,255,0.9)', backdropFilter:'blur(20px)', padding:'32px' }}>
-                  <div style={{ display:'flex', flexDirection:'column', gap:20 }}>
+                <form onSubmit={handleSaveClient} style={{ padding:'32px' }}>
+                  <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
                     <div>
-                      <label style={labelStyle}>Nombre del Establecimiento</label>
+                      <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Nombre del Establecimiento</label>
                       <div style={{ position:'relative' }}>
                         <input required type="text" value={clientFormData.nombre}
                           onChange={(e) => setClientFormData(p => ({...p, nombre: e.target.value}))}
-                          className="input-glass" placeholder="Ej: Farmacia Central" style={{ paddingLeft:46, background: 'white' }} />
-                        <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontSize:18, opacity:.4 }}>🏪</span>
+                          placeholder="Ej: Farmacia Central" 
+                          style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
+                          onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
+                          onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                        />
+                        <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>🏪</span>
                       </div>
                     </div>
 
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:18 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
                       <div>
-                        <label style={labelStyle}>Teléfono</label>
+                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Teléfono de Contacto</label>
                         <div style={{ position:'relative' }}>
                           <input type="text" value={clientFormData.telefono}
                             onChange={(e) => setClientFormData(p => ({...p, telefono: e.target.value}))}
-                            className="input-glass" placeholder="300 123 4567" style={{ paddingLeft:46, background: 'white' }} />
-                          <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontSize:18, opacity:.4 }}>📞</span>
+                            placeholder="Ej: 300 123 4567" 
+                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
+                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
+                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                          />
+                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>📞</span>
                         </div>
                       </div>
                       <div>
-                        <label style={labelStyle}>Ciudad</label>
+                        <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Ciudad / Ubicación</label>
                         <div style={{ position:'relative' }}>
                           <input type="text" value={clientFormData.ciudad}
                             onChange={(e) => setClientFormData(p => ({...p, ciudad: e.target.value}))}
-                            className="input-glass" placeholder="Ciudad" style={{ paddingLeft:46, background: 'white' }} />
-                          <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontSize:18, opacity:.4 }}>📍</span>
+                            placeholder="Ej: Bogotá" 
+                            style={{ width:'100%', padding:'16px 16px 16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', boxSizing:'border-box' }}
+                            onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
+                            onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                          />
+                          <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>📍</span>
                         </div>
                       </div>
                     </div>
 
                     <div>
-                      <label style={labelStyle}>Asignar a Vendedor</label>
-                      <div className="select-wrapper" style={{ position:'relative' }}>
-                        <select className="input-glass" value={clientFormData.vendedor_id}
+                      <label style={{...labelStyle, color:'#0F6E56', fontSize:12}}>Asignar a Vendedor</label>
+                      <div style={{ position:'relative' }}>
+                        <select value={clientFormData.vendedor_id}
                           onChange={(e) => setClientFormData(p => ({...p, vendedor_id: e.target.value}))}
-                          style={{ appearance:'none', cursor:'pointer', paddingLeft:46, background: 'white' }}>
-                          <option value="">👤 Dejar como Punto Libre</option>
+                          style={{ width:'100%', padding:'16px 48px', borderRadius:16, border:'2px solid #e2e8f0', background:'#f8fafc', fontSize:15, color:'#1e293b', outline:'none', transition:'all 0.3s', fontFamily:'system-ui, sans-serif', appearance:'none', cursor:'pointer', boxSizing:'border-box' }}
+                          onFocus={e => { e.target.style.borderColor='#0F6E56'; e.target.style.background='white'; e.target.style.boxShadow='0 0 0 4px rgba(15,110,86,0.1)'; }}
+                          onBlur={e => { e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc'; e.target.style.boxShadow='none'; }}
+                        >
+                          <option value="" style={{ color:'#64748b' }}>👤 Dejar como Punto Libre</option>
                           {vendedoresList.map(v => (
                             <option key={v.id} value={v.id}>{v.nombre_completo}</option>
                           ))}
                         </select>
-                        <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontSize:18, opacity:.4 }}>👤</span>
-                        <div style={{ position:'absolute', right:16, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:12, opacity:.5 }}>▼</div>
+                        <span style={{ position:'absolute', left:18, top:'50%', transform:'translateY(-50%)', fontSize:20, opacity:.5, pointerEvents:'none' }}>🤝</span>
+                        <div style={{ position:'absolute', right:20, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:14, color:'#64748b', background:'#f1f5f9', width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>▼</div>
                       </div>
                     </div>
 
-                    <button type="submit" className="btn-primary" disabled={isSubmittingClient} style={{ 
-                      borderRadius:18, height:60, fontSize:16, fontWeight:900, marginTop:10,
-                      display:'flex', alignItems:'center', justifyContent:'center', gap:12,
-                      boxShadow:'0 10px 25px rgba(15,110,86,0.25)',
-                      background: 'linear-gradient(90deg, #084032, #0F6E56)'
-                    }}>
-                      {isSubmittingClient ? (
-                        <>
-                          <div style={{ width:22, height:22, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .8s linear infinite' }}/>
-                          Procesando...
-                        </>
-                      ) : (
-                        <>
-                          <span>{editingClientId ? 'Guardar Cambios' : 'Confirmar Registro'}</span>
-                          <span style={{ opacity:.6 }}>➔</span>
-                        </>
-                      )}
-                    </button>
+                    <div style={{ marginTop: 8 }}>
+                      <button type="submit" disabled={isSubmittingClient} style={{ 
+                        width:'100%', borderRadius:16, height:64, fontSize:16, fontWeight:800,
+                        display:'flex', alignItems:'center', justifyContent:'center', gap:12,
+                        boxShadow:'0 8px 20px rgba(15,110,86,0.2)',
+                        background: 'linear-gradient(135deg, #084032 0%, #0F6E56 100%)',
+                        color:'white', border:'none', cursor:'pointer', transition:'all 0.3s',
+                        fontFamily:'system-ui, sans-serif', letterSpacing:'0.3px'
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 24px rgba(15,110,86,0.3)'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 20px rgba(15,110,86,0.2)'; }}
+                      >
+                        {isSubmittingClient ? (
+                          <>
+                            <div style={{ width:24, height:24, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .8s linear infinite' }}/>
+                            Procesando registro...
+                          </>
+                        ) : (
+                          <>
+                            <span>{editingClientId ? 'Guardar Cambios del Cliente' : 'Confirmar Registro del Cliente'}</span>
+                            <span style={{ background:'rgba(255,255,255,0.2)', padding:'4px 8px', borderRadius:8, fontSize:14 }}>➔</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </form>
               </div>
