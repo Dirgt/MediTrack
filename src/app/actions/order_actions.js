@@ -22,6 +22,37 @@ const TRANSICIONES_VALIDAS = {
   cancelado:            [],
 };
 
+// ── Etiquetas legibles por estado ──
+const ESTADO_LABEL = {
+  pendiente:            'Pendiente ⏳',
+  alistando:            'En alistamiento 📦',
+  facturando:           'En facturación 🧾',
+  en_camino:            'En camino 🚚',
+  entregado:            '¡Entregado! ✅',
+  rechazado_puerta:     'Rechazado en puerta 🚫',
+  programado_reintento: 'Reintento programado 🔄',
+  cerrado_sin_entrega:  'Cerrado sin entrega 🔒',
+  cancelado:            'Cancelado ❌',
+};
+
+/**
+ * Inserta una notificación push para el vendedor dueño del pedido.
+ * Es silencioso: nunca bloquea el flujo principal si falla.
+ */
+async function notificarVendedor(supabase, { vendedorId, tipo, mensaje, pedidoId }) {
+  try {
+    await supabase.from('notificaciones').insert({
+      user_id:  vendedorId,
+      tipo,
+      mensaje,
+      leida:    false,
+      order_id: pedidoId || null,
+    });
+  } catch (_) {
+    // Silencioso — la notificación es auxiliar, no debe romper nada
+  }
+}
+
 /**
  * Avanza el estado de un pedido.
  */
@@ -31,7 +62,7 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
 
     const { data: order, error: fetchErr } = await supabase
       .from('orders')
-      .select('id, estado, intentos_entrega')
+      .select('id, estado, intentos_entrega, vendedor_id, cliente_nombre')
       .eq('id', orderId)
       .single();
 
@@ -76,6 +107,16 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
       nota_interna:    opciones.notas || opciones.motivo_rechazo || opciones.nota_reintento || opciones.motivo_cancelacion || null,
       cambiado_por:    opciones.adminId || null,
     });
+
+    // ── Notificación push al vendedor ──
+    if (order.vendedor_id) {
+      await notificarVendedor(supabase, {
+        vendedorId: order.vendedor_id,
+        tipo:       'cambio_estado',
+        mensaje:    `Tu pedido de "${order.cliente_nombre}" cambió a: ${ESTADO_LABEL[nuevoEstado] || nuevoEstado}`,
+        pedidoId:   orderId,
+      });
+    }
 
     return { success: true };
   } catch (e) {
@@ -141,7 +182,7 @@ export async function cancelarPedido(orderId, { motivo, usuarioId, esAdmin }) {
 
     const { data: order, error: fetchErr } = await supabase
       .from('orders')
-      .select('id, estado, vendedor_id')
+      .select('id, estado, vendedor_id, cliente_nombre')
       .eq('id', orderId)
       .single();
 
@@ -173,6 +214,16 @@ export async function cancelarPedido(orderId, { motivo, usuarioId, esAdmin }) {
       nota_interna:    motivo || 'Pedido cancelado',
       cambiado_por:    usuarioId,
     });
+
+    // ── Notificar al vendedor solo si quien cancela es el admin ──
+    if (esAdmin && order.vendedor_id && order.vendedor_id !== usuarioId) {
+      await notificarVendedor(supabase, {
+        vendedorId: order.vendedor_id,
+        tipo:       'cambio_estado',
+        mensaje:    `Tu pedido de "${order.cliente_nombre}" fue cancelado por administración.`,
+        pedidoId:   orderId,
+      });
+    }
 
     return { success: true };
   } catch (e) {

@@ -569,19 +569,13 @@ export default function MisPedidos() {
                         )}
 
                         {puedeEvVendor && (
-                          <div style={{ display:'flex', gap:12 }}>
+                          <div>
                             <button onClick={()=>router.push(`/pedidos/${pedido.id}/editar`)} style={{
-                              flex:1, background:'#0F6E56', color:'white', border:'none', padding:'16px', borderRadius:16,
+                              width: '100%', background:'#0F6E56', color:'white', border:'none', padding:'16px', borderRadius:16,
                               fontSize:15, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
                               boxShadow:'0 6px 16px rgba(15,110,86,0.3)'
                             }}>
                               ✏️ Editar Compra
-                            </button>
-                            <button onClick={()=>setModalCancelar(pedido)} style={{
-                              flex:1, background:'#fef2f2', color:'#dc2626', border:'2px solid #fecaca', padding:'16px', borderRadius:16,
-                              fontSize:15, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8
-                            }}>
-                              ❌ Anular
                             </button>
                           </div>
                         )}

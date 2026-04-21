@@ -577,112 +577,125 @@ export default function ConfiguracionAdmin() {
 
                       {/* ── PANEL EXPANDIDO ── */}
                       {isExpanded && (
-                        <div style={{ borderTop:`1px solid ${cfg.border}`, background:'rgba(249,250,251,0.8)' }}>
+                        <div style={{ background:'white', padding:'24px 32px', borderRadius:'0 0 18px 18px', borderTop:`1px solid ${cfg.border}`, boxShadow:'inset 0 4px 15px rgba(0,0,0,0.02)' }}>
 
                           {/* ── Edición de perfil ── */}
-                          <div style={{ padding:'16px 16px 0' }}>
-                            <p style={{ fontSize:11, fontWeight:700, color:cfg.color, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:12 }}>
-                              ✏️ Editar Perfil
+                          <div style={{ marginBottom: 24 }}>
+                            <p style={{ fontSize:12, fontWeight:800, color:cfg.color, textTransform:'uppercase', letterSpacing:'.8px', marginBottom:16, display:'flex', alignItems:'center', gap:8 }}>
+                              <span style={{ fontSize: 16 }}>✏️</span> Editar Perfil
                             </p>
-                            <form onSubmit={handleSaveEdit} style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                              <div className="form-group" style={{ marginBottom: '10px' }}>
-                                <label className="form-label-premium">Nombre Completo</label>
-                                <div className="form-input-wrapper">
-                                  <input className="form-input-premium" value={editForm.nombre_completo}
-                                    onChange={e => setEditForm(p => ({ ...p, nombre_completo: e.target.value }))}
-                                    placeholder="Nombre completo" required />
-                                  <span className="input-icon">👤</span>
+                            <form onSubmit={handleSaveEdit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
+                              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label-premium">Nombre Completo</label>
+                                  <div className="form-input-wrapper">
+                                    <input className="form-input-premium" value={editForm.nombre_completo}
+                                      onChange={e => setEditForm(p => ({ ...p, nombre_completo: e.target.value }))}
+                                      placeholder="Nombre completo" required />
+                                    <span className="input-icon">👤</span>
+                                  </div>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                  <label className="form-label-premium">Rol</label>
+                                  <div className="form-input-wrapper">
+                                    <select className="form-input-premium" value={editForm.role}
+                                      onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}
+                                      style={{ appearance: 'none', cursor: 'pointer' }}
+                                    >
+                                      {Object.entries(ROLE_CONFIG).map(([r, c]) => (
+                                        <option key={r} value={r}>{c.label}</option>
+                                      ))}
+                                    </select>
+                                    <span className="input-icon">🎭</span>
+                                    <div style={{ position:'absolute', right:20, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:14, color:'#64748b', background:'#f1f5f9', width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>▼</div>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="form-group" style={{ marginBottom: '10px' }}>
-                                <label className="form-label-premium">Rol</label>
-                                <div className="form-input-wrapper">
-                                  <select className="form-input-premium" value={editForm.role}
-                                    onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}>
-                                    {Object.entries(ROLE_CONFIG).map(([r, c]) => (
-                                      <option key={r} value={r}>{c.label}</option>
-                                    ))}
-                                  </select>
-                                  <span className="input-icon">🎭</span>
-                                  <div style={{ position:'absolute', right:16, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:14, color:'#64748b' }}>▼</div>
-                                </div>
-                              </div>
-                              {/* Se eliminaron los campos de meta y comisión por solicitud del usuario */}
-                              <button type="submit" disabled={isSavingEdit} className="form-btn-premium" style={{ height: '54px', marginTop: 0 }}>
+                              <button type="submit" disabled={isSavingEdit} className="form-btn-premium">
                                 {isSavingEdit ? (
-                                  <><div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Guardando...</>
+                                  <><div style={{ width:20, height:20, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Guardando Cambios...</>
                                 ) : '💾 Guardar Cambios'}
                               </button>
                             </form>
                           </div>
 
                           {/* ── Cambiar Contraseña (acordeOn) ── */}
-                          <div style={{ padding:'0 16px 16px' }}>
+                          <div style={{ marginBottom: u.role === 'vendedor' ? 24 : 0 }}>
                             <button
                               type="button"
                               onClick={() => setShowPwdSection(p => !p)}
                               style={{
                                 width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between',
-                                background:'rgba(220,38,38,0.06)', border:'1px solid rgba(220,38,38,0.2)',
-                                borderRadius:10, padding:'10px 14px', cursor:'pointer', marginTop:4,
+                                background: showPwdSection ? 'rgba(239, 68, 68, 0.08)' : 'white', 
+                                border: showPwdSection ? '2px solid rgba(239, 68, 68, 0.3)' : '2px dashed rgba(239, 68, 68, 0.3)',
+                                borderRadius:16, padding:'16px 20px', cursor:'pointer',
+                                transition:'all 0.3s',
                               }}
+                              onMouseOver={e => { e.currentTarget.style.background='rgba(239, 68, 68, 0.08)'; e.currentTarget.style.borderColor='rgba(239, 68, 68, 0.4)'; }}
+                              onMouseOut={e => { if (!showPwdSection) { e.currentTarget.style.background='white'; e.currentTarget.style.borderColor='rgba(239, 68, 68, 0.3)'; } }}
                             >
-                              <span style={{ fontSize:12, fontWeight:700, color:'#dc2626', textTransform:'uppercase', letterSpacing:'.6px' }}>
-                                🔑 Cambiar Contraseña
+                              <span style={{ fontSize:13, fontWeight:800, color:'#dc2626', textTransform:'uppercase', letterSpacing:'.8px', display:'flex', alignItems:'center', gap:8 }}>
+                                <span style={{ fontSize: 16 }}>🔑</span> Cambiar Contraseña
                               </span>
-                              <span style={{ fontSize:14, color:'#dc2626', transform: showPwdSection ? 'rotate(180deg)' : 'none', transition:'transform 0.2s' }}>▾</span>
+                              <div style={{ 
+                                width: 28, height: 28, borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color:'#dc2626', transform: showPwdSection ? 'rotate(180deg)' : 'none', transition:'transform 0.3s' 
+                              }}>▼</div>
                             </button>
 
                             {showPwdSection && (
-                              <div style={{ marginTop:10, display:'flex', flexDirection:'column', gap:10, animation:'slideDown .2s ease' }}>
+                              <div style={{ marginTop:16, display:'flex', flexDirection:'column', gap:16, animation:'slideDown .2s ease' }}>
                                 {pwdFeedback && (
                                   <div style={{
-                                    padding:'10px 14px', borderRadius:10, fontSize:13, fontWeight:500,
-                                    display:'flex', alignItems:'center', gap:8,
-                                    background: pwdFeedback.type==='success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-                                    border: `1px solid ${pwdFeedback.type==='success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)'}`,
+                                    padding:'12px 16px', borderRadius:12, fontSize:14, fontWeight:600,
+                                    display:'flex', alignItems:'center', gap:10,
+                                    background: pwdFeedback.type==='success' ? '#ecfdf5' : '#fef2f2',
+                                    border: `1px solid ${pwdFeedback.type==='success' ? '#10b981' : '#ef4444'}`,
                                     color: pwdFeedback.type==='success' ? '#065f46' : '#991b1b',
                                   }}>
                                     {pwdFeedback.type==='success' ? '✅' : '❌'} {pwdFeedback.message}
                                   </div>
                                 )}
 
-                                <form onSubmit={handleChangePassword} style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                                  <div className="form-group" style={{ marginBottom: '10px' }}>
-                                    <label className="form-label-premium">Nueva Contraseña</label>
-                                    <div className="form-input-wrapper">
-                                      <input
-                                        type={showPwd ? 'text' : 'password'}
-                                        minLength={6} required
-                                        value={pwdForm.nueva}
-                                        onChange={e => setPwdForm(p => ({ ...p, nueva: e.target.value }))}
-                                        className="form-input-premium"
-                                        placeholder="Mínimo 6 caracteres"
-                                      />
-                                      <span className="input-icon">🔒</span>
-                                      <button type="button" onClick={() => setShowPwd(p => !p)} className="form-password-toggle">
-                                        {showPwd ? '🙈' : '👁️'}
-                                      </button>
+                                <form onSubmit={handleChangePassword} style={{ display:'flex', flexDirection:'column', gap:16, padding: '0 4px' }}>
+                                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                      <label className="form-label-premium">Nueva Contraseña</label>
+                                      <div className="form-input-wrapper">
+                                        <input
+                                          type={showPwd ? 'text' : 'password'}
+                                          minLength={6} required
+                                          value={pwdForm.nueva}
+                                          onChange={e => setPwdForm(p => ({ ...p, nueva: e.target.value }))}
+                                          className="form-input-premium"
+                                          placeholder="Mínimo 6 caracteres"
+                                        />
+                                        <span className="input-icon">🔒</span>
+                                        <button type="button" onClick={() => setShowPwd(p => !p)} className="form-password-toggle">
+                                          {showPwd ? '🙈' : '👁️'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                      <label className="form-label-premium">Confirmar Contraseña</label>
+                                      <div className="form-input-wrapper">
+                                        <input
+                                          type={showPwd ? 'text' : 'password'}
+                                          minLength={6} required
+                                          value={pwdForm.confirmar}
+                                          onChange={e => setPwdForm(p => ({ ...p, confirmar: e.target.value }))}
+                                          className="form-input-premium"
+                                          placeholder="Repite la nueva contraseña"
+                                        />
+                                        <span className="input-icon">🔒</span>
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="form-group" style={{ marginBottom: '10px' }}>
-                                    <label className="form-label-premium">Confirmar Contraseña</label>
-                                    <div className="form-input-wrapper">
-                                      <input
-                                        type={showPwd ? 'text' : 'password'}
-                                        minLength={6} required
-                                        value={pwdForm.confirmar}
-                                        onChange={e => setPwdForm(p => ({ ...p, confirmar: e.target.value }))}
-                                        className="form-input-premium"
-                                        placeholder="Repite la nueva contraseña"
-                                      />
-                                      <span className="input-icon">🔒</span>
-                                    </div>
-                                  </div>
-                                  <button type="submit" disabled={isSavingPwd} className="form-btn-premium" style={{ height: '54px', marginTop: 0, background: 'linear-gradient(135deg, #991b1b 0%, #ef4444 100%)', boxShadow: '0 8px 20px rgba(239, 68, 68, 0.2)' }}>
+                                  <button type="submit" disabled={isSavingPwd} className="form-btn-premium" style={{ background: 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)', boxShadow: '0 8px 20px rgba(239, 68, 68, 0.25)' }}>
                                     {isSavingPwd ? (
-                                      <><div style={{ width:14, height:14, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Actualizando...</>
-                                    ) : '🔑 Actualizar Contraseña'}
+                                      <><div style={{ width:20, height:20, borderRadius:'50%', border:'3px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Actualizando...</>
+                                    ) : '🔑 Guardar Nueva Contraseña'}
                                   </button>
                                 </form>
                               </div>
@@ -691,20 +704,20 @@ export default function ConfiguracionAdmin() {
 
                           {/* ── Gestión de Clientes (solo para vendedores) ── */}
                           {u.role === 'vendedor' && (
-                            <div style={{ padding:'16px' }}>
-                              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                                <p style={{ fontSize:11, fontWeight:700, color:cfg.color, textTransform:'uppercase', letterSpacing:'.6px', margin:0 }}>
-                                  🏪 Clientes Asignados ({userClientes.length})
+                            <div>
+                              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+                                <p style={{ fontSize:12, fontWeight:800, color:cfg.color, textTransform:'uppercase', letterSpacing:'.8px', margin:0, display:'flex', alignItems:'center', gap:8 }}>
+                                  <span style={{ fontSize: 16 }}>🏪</span> Clientes Asignados ({userClientes.length})
                                 </p>
                               </div>
 
                               {/* Feedback de clientes */}
                               {clientesFeedback && (
                                 <div style={{
-                                  padding:'10px 14px', borderRadius:10, marginBottom:10, fontSize:13, fontWeight:500,
-                                  display:'flex', alignItems:'center', gap:8,
-                                  background: clientesFeedback.type==='success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.08)',
-                                  border: `1px solid ${clientesFeedback.type==='success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)'}`,
+                                  padding:'12px 16px', borderRadius:12, marginBottom:16, fontSize:14, fontWeight:600,
+                                  display:'flex', alignItems:'center', gap:10,
+                                  background: clientesFeedback.type==='success' ? '#ecfdf5' : '#fef2f2',
+                                  border: `1px solid ${clientesFeedback.type==='success' ? '#10b981' : '#ef4444'}`,
                                   color:  clientesFeedback.type==='success' ? '#065f46' : '#991b1b',
                                 }}>
                                   {clientesFeedback.type==='success' ? '✅' : '❌'} {clientesFeedback.message}
@@ -712,41 +725,46 @@ export default function ConfiguracionAdmin() {
                               )}
 
                               {loadingClientes ? (
-                                <div style={{ textAlign:'center', padding:16 }}>
-                                  <div style={{ width:22, height:22, borderRadius:'50%', border:'2.5px solid rgba(15,110,86,0.15)', borderTopColor:cfg.color, animation:'spin .7s linear infinite', margin:'0 auto' }}/>
+                                <div style={{ textAlign:'center', padding:24 }}>
+                                  <div style={{ width:28, height:28, borderRadius:'50%', border:'3px solid rgba(15,110,86,0.15)', borderTopColor:cfg.color, animation:'spin .7s linear infinite', margin:'0 auto' }}/>
                                 </div>
                               ) : (
                                 <>
                                   {/* Lista de clientes actuales */}
                                   {userClientes.length === 0 ? (
-                                    <div style={{ textAlign:'center', padding:'16px 0', color:'var(--text-muted)', fontSize:13 }}>
+                                    <div style={{ textAlign:'center', padding:'24px 0', color:'var(--text-muted)', fontSize:14, fontWeight: 500, background: '#f8fafc', borderRadius: 16, border: '2px dashed #e2e8f0', marginBottom: 16 }}>
                                       📭 Sin clientes asignados
                                     </div>
                                   ) : (
-                                    <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:10 }}>
+                                    <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
                                       {userClientes.map(c => (
                                         <div key={c.id} style={{
-                                          display:'flex', alignItems:'center', gap:10,
-                                          background:'white', borderRadius:10,
-                                          border:'1px solid rgba(15,110,86,0.12)',
-                                          padding:'10px 12px',
+                                          display:'flex', alignItems:'center', gap:12,
+                                          background:'#f8fafc', borderRadius:16,
+                                          border:'1px solid #e2e8f0',
+                                          padding:'12px 16px',
                                         }}>
-                                          <span style={{ fontSize:18 }}>🏪</span>
+                                          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                                            🏪
+                                          </div>
                                           <div style={{ flex:1, minWidth:0 }}>
-                                            <p style={{ margin:0, fontWeight:600, fontSize:14, color:'var(--brand-dark)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                            <p style={{ margin:0, fontWeight:700, fontSize:15, color:'var(--brand-dark)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                                               {c.nombre}
                                             </p>
-                                            {c.ciudad && <p style={{ margin:0, fontSize:11, color:'var(--text-muted)' }}>📍 {c.ciudad}</p>}
+                                            {c.ciudad && <p style={{ margin:0, fontSize:12, color:'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>📍 {c.ciudad}</p>}
                                           </div>
                                           <button
                                             onClick={() => handleUnassign(c)}
                                             title={`Liberar a ${c.nombre}`}
                                             style={{
-                                              width:32, height:32, borderRadius:8, border:'1px solid rgba(220,38,38,0.3)',
-                                              background:'rgba(220,38,38,0.06)', color:'#dc2626',
-                                              cursor:'pointer', fontSize:16, flexShrink:0,
+                                              width:36, height:36, borderRadius:10, border:'none',
+                                              background:'rgba(220,38,38,0.1)', color:'#dc2626',
+                                              cursor:'pointer', fontSize:18, flexShrink:0,
                                               display:'flex', alignItems:'center', justifyContent:'center',
+                                              transition: 'all 0.2s'
                                             }}
+                                            onMouseOver={e => { e.currentTarget.style.background='rgba(239,68,68,0.15)'; e.currentTarget.style.transform='scale(1.05)'; }}
+                                            onMouseOut={e => { e.currentTarget.style.background='rgba(220,38,38,0.1)'; e.currentTarget.style.transform='scale(1)'; }}
                                           >🗑️</button>
                                         </div>
                                       ))}
@@ -758,65 +776,67 @@ export default function ConfiguracionAdmin() {
                                     <button
                                       onClick={() => { setShowClientePicker(p => !p); setClienteSearch(''); }}
                                       style={{
-                                        width:'100%', padding:'10px 14px', borderRadius:12,
-                                        border:`2px dashed ${cfg.color}88`,
-                                        background:'transparent', color:cfg.color,
-                                        cursor:'pointer', fontWeight:700, fontSize:13,
-                                        display:'flex', alignItems:'center', justifyContent:'center', gap:6,
-                                        transition:'background 0.2s',
+                                        width:'100%', padding:'16px 20px', borderRadius:16,
+                                        border: showClientePicker ? `2px solid ${cfg.color}` : `2px dashed ${cfg.color}66`,
+                                        background: showClientePicker ? `${cfg.color}11` : 'transparent', color:cfg.color,
+                                        cursor:'pointer', fontWeight:800, fontSize:14,
+                                        display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                                        transition:'all 0.3s',
                                       }}
+                                      onMouseOver={e => { if (!showClientePicker) e.currentTarget.style.background=`${cfg.color}08`; }}
+                                      onMouseOut={e => { if (!showClientePicker) e.currentTarget.style.background='transparent'; }}
                                     >
-                                      ＋ Asociar Cliente Disponible
+                                      <span style={{ fontSize: 18 }}>＋</span> Asociar Cliente Disponible
                                     </button>
 
                                     {showClientePicker && (
                                       <div style={{
-                                        position:'absolute', bottom:'calc(100% + 8px)', left:0, right:0, zIndex:100,
-                                        background:'white', borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,0.15)',
+                                        position:'absolute', bottom:'calc(100% + 12px)', left:0, right:0, zIndex:100,
+                                        background:'white', borderRadius:16, boxShadow:'0 12px 40px rgba(0,0,0,0.15)',
                                         border:'1px solid rgba(15,110,86,0.2)',
                                         overflow:'hidden', animation:'slideDown .2s ease',
                                       }}>
                                         {/* Buscador */}
-                                        <div style={{ padding:'10px 12px', borderBottom:'1px solid rgba(0,0,0,0.06)' }}>
-                                          <input
-                                            autoFocus
-                                            type="text"
-                                            value={clienteSearch}
-                                            onChange={e => setClienteSearch(e.target.value)}
-                                            placeholder="🔍 Buscar cliente libre..."
-                                            style={{
-                                              width:'100%', padding:'8px 12px', borderRadius:8,
-                                              border:'1px solid rgba(0,0,0,0.1)', fontSize:14,
-                                              outline:'none', fontFamily:'inherit', boxSizing:'border-box',
-                                            }}
-                                          />
+                                        <div style={{ padding:'16px', borderBottom:'1px solid #e2e8f0', background: '#f8fafc' }}>
+                                          <div className="form-input-wrapper">
+                                            <input
+                                              autoFocus
+                                              type="text"
+                                              value={clienteSearch}
+                                              onChange={e => setClienteSearch(e.target.value)}
+                                              placeholder="Buscar cliente libre..."
+                                              className="form-input-premium"
+                                              style={{ padding: '12px 12px 12px 42px', fontSize: 14 }}
+                                            />
+                                            <span className="input-icon" style={{ fontSize: 16 }}>🔍</span>
+                                          </div>
                                         </div>
 
                                         {/* Lista */}
-                                        <div style={{ maxHeight:200, overflowY:'auto' }}>
+                                        <div style={{ maxHeight:240, overflowY:'auto' }}>
                                           {clientesFiltrados.length === 0 ? (
-                                            <div style={{ padding:'16px 14px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>
-                                              {clienteSearch ? 'Sin resultados' : '✅ No hay clientes libres disponibles'}
+                                            <div style={{ padding:'24px 16px', textAlign:'center', color:'var(--text-muted)', fontSize:14, fontWeight: 500 }}>
+                                              {clienteSearch ? 'No se encontraron clientes' : '✅ No hay clientes libres disponibles'}
                                             </div>
                                           ) : clientesFiltrados.map(c => (
                                             <button
                                               key={c.id}
                                               onClick={() => handleAssign(c)}
                                               style={{
-                                                width:'100%', padding:'10px 14px', background:'none', border:'none',
-                                                cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:10,
-                                                borderBottom:'1px solid rgba(0,0,0,0.04)',
-                                                transition:'background 0.15s',
+                                                width:'100%', padding:'12px 16px', background:'none', border:'none',
+                                                cursor:'pointer', textAlign:'left', display:'flex', alignItems:'center', gap:12,
+                                                borderBottom:'1px solid #e2e8f0',
+                                                transition:'background 0.2s',
                                               }}
-                                              onMouseEnter={e => e.currentTarget.style.background='rgba(15,110,86,0.06)'}
+                                              onMouseEnter={e => e.currentTarget.style.background='#f1f5f9'}
                                               onMouseLeave={e => e.currentTarget.style.background='none'}
                                             >
-                                              <span style={{ fontSize:18 }}>🏪</span>
+                                              <div style={{ width: 36, height: 36, borderRadius: 10, background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🏪</div>
                                               <div style={{ flex:1 }}>
-                                                <p style={{ margin:0, fontWeight:600, fontSize:14, color:'var(--brand-dark)' }}>{c.nombre}</p>
-                                                {c.ciudad && <p style={{ margin:0, fontSize:11, color:'var(--text-muted)' }}>📍 {c.ciudad}</p>}
+                                                <p style={{ margin:0, fontWeight:700, fontSize:14, color:'var(--brand-dark)' }}>{c.nombre}</p>
+                                                {c.ciudad && <p style={{ margin:0, fontSize:12, color:'var(--text-muted)', fontWeight: 500 }}>📍 {c.ciudad}</p>}
                                               </div>
-                                              <span style={{ fontSize:18, color:cfg.color }}>＋</span>
+                                              <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${cfg.color}15`, color: cfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800 }}>＋</div>
                                             </button>
                                           ))}
                                         </div>

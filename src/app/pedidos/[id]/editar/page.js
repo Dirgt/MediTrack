@@ -206,16 +206,34 @@ export default function EditarPedido({ params }) {
 
         {/* Acciones Grandes */}
         <div style={{ marginTop: 10, display: 'flex', gap: 12 }}>
-          <button onClick={() => router.back()} disabled={submitting} style={{ flex: 1, padding: 18, borderRadius: 20, border: 'none', background: '#e2e8f0', fontSize: 15, fontWeight: 800, color: '#64748b', cursor:'pointer' }}>
+          <button
+            onClick={() => router.back()}
+            disabled={submitting}
+            style={{
+              flex: 1, padding: 18, borderRadius: 20, border: 'none',
+              background: '#e2e8f0', fontSize: 15, fontWeight: 800,
+              color: '#475569', cursor: submitting ? 'not-allowed' : 'pointer',
+            }}
+          >
             Cancelar
           </button>
-          <button onClick={handleGuardar} disabled={submitting} style={{
-            flex: 2, padding: 18, borderRadius: 20, border: 'none', background: 'var(--brand)', color: 'white', fontSize: 15, fontWeight: 800, cursor:'pointer',
-            opacity: submitting ? 0.7 : 1, boxShadow: '0 10px 24px rgba(15,110,86,0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10
-          }}>
-            {submitting ? (
-              <><div style={{ width:18, height:18, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Guardando...</>
-            ) : 'Confirmar Cambios'}
+          <button
+            onClick={handleGuardar}
+            disabled={submitting}
+            style={{
+              flex: 2, padding: 18, borderRadius: 20, border: 'none',
+              background: submitting ? '#6b9e8f' : '#0F6E56',
+              color: 'white', fontSize: 15, fontWeight: 800,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              boxShadow: submitting ? 'none' : '0 10px 24px rgba(15,110,86,0.4)',
+              display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10,
+              transition: 'background .2s',
+            }}
+          >
+            {submitting
+              ? <><div style={{ width:18, height:18, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }}/> Guardando...</>
+              : <><span>💾</span> Confirmar Cambios</>
+            }
           </button>
         </div>
       </div>

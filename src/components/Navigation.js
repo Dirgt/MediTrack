@@ -186,6 +186,16 @@ export default function Navigation() {
                 notificaciones.map((notif, idx) => (
                   <div
                     key={notif.id}
+                    onClick={async () => {
+                      if (notif.order_id) {
+                        setShowNotifDrawer(false);
+                        // marcar como leída si no lo está
+                        if (!notif.leida) {
+                          await supabase.from('notificaciones').update({ leida: true }).eq('id', notif.id);
+                        }
+                        window.location.href = `/pedidos/${notif.order_id}`;
+                      }
+                    }}
                     style={{
                       padding: '12px 16px',
                       borderBottom: idx < notificaciones.length - 1 ? '1px solid #f9fafb' : 'none',
@@ -194,17 +204,18 @@ export default function Navigation() {
                       alignItems: 'flex-start',
                       background: notif.leida ? 'white' : 'rgba(15,110,86,0.04)',
                       transition: 'background 0.2s',
+                      cursor: notif.order_id ? 'pointer' : 'default',
                     }}
                   >
                     {/* Left accent bar */}
                     <div style={{
                       width: 3, borderRadius: 4, flexShrink: 0, alignSelf: 'stretch',
-                      background: notif.tipo === 'nuevo_pedido' ? 'var(--brand)' : '#f59e0b',
+                      background: notif.tipo === 'nuevo_pedido' ? 'var(--brand)' : notif.tipo === 'cambio_estado' ? '#f59e0b' : '#ef4444',
                       opacity: notif.leida ? 0.35 : 1,
                     }} />
 
                     <span style={{ fontSize: 16, lineHeight: 1, marginTop: 2, flexShrink: 0 }}>
-                      {notif.tipo === 'nuevo_pedido' ? '🆕' : '🔄'}
+                      {notif.tipo === 'nuevo_pedido' ? '🆕' : notif.tipo === 'cambio_estado' ? '🔄' : '❌'}
                     </span>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
