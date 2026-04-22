@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
+import SLAIndicator from '@/components/SLAIndicator';
 
 const ESTADO = {
   pendiente:            { label:'Pendiente',          emoji:'⏳', color:'#0F6E56', bg:'rgba(15,110,86,0.1)'   },
@@ -162,6 +163,11 @@ export default function DetallePedido({ params }) {
       </div>
 
       <div style={{ padding:'0 16px', display:'flex', flexDirection:'column', gap:16 }}>
+
+        {/* SLA — Estado Operativo */}
+        {!['entregado','cancelado','cerrado_sin_entrega'].includes(pedido.estado) && (
+          <SLAIndicator pedido={pedido} compact={false} />
+        )}
 
         {/* Progreso */}
         <div style={{ background:'white', borderRadius:24, padding:'20px', boxShadow:'0 8px 24px rgba(0,0,0,0.05)', border:'1px solid #f1f5f9' }}>

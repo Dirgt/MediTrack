@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 import { cambiarEstadoPedido, cancelarPedido } from '@/app/actions/order_actions';
+import SLAIndicator from '@/components/SLAIndicator';
 
 // ── Config visual de estados ──
 const ESTADO = {
@@ -483,6 +484,11 @@ export default function MisPedidos() {
                           </div>
                         )}
                         <h3 style={{ margin:'0 0 6px', fontSize:18, fontWeight:800, color:'#084032' }}>{pedido.cliente_nombre}</h3>
+                        
+                        {/* SLA Badge — indicador de urgencia operativa */}
+                        <div style={{ marginBottom: 8 }}>
+                          <SLAIndicator pedido={pedido} compact />
+                        </div>
                         
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                            <span style={{ fontSize:13, fontWeight:600, color:'#64748b', background:'#f1f5f9', padding:'4px 10px', borderRadius:10 }}>
