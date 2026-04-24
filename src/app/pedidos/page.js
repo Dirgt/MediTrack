@@ -221,7 +221,7 @@ export default function MisPedidos() {
       .from('orders')
       .select(`id, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
                observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
-               intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id,
+               intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
                order_items(medicamento_nombre, cantidad),
                profiles!orders_vendedor_id_fkey(id, nombre_completo)`, { count: 'exact' })
       .order('creado_en', { ascending: false });
@@ -300,6 +300,7 @@ export default function MisPedidos() {
     { id:'todos',      label:'Todos'       },
     { id:'pendiente',  label:'Pendientes', icon: '⏳' },
     { id:'alistando',  label:'Alistando',  icon: '📦' },
+    { id:'facturando', label:'Facturando', icon: '🧾' },
     { id:'en_camino',  label:'En Camino',  icon: '🚚' },
     { id:'entregado',  label:'Entregados', icon: '✅' },
     { id:'rechazos',   label:'Rechazos',   icon: '🚫' },
@@ -483,7 +484,14 @@ export default function MisPedidos() {
                             👤 {pedido.profiles?.nombre_completo}
                           </div>
                         )}
-                        <h3 style={{ margin:'0 0 6px', fontSize:18, fontWeight:800, color:'#084032' }}>{pedido.cliente_nombre}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#084032' }}>{pedido.cliente_nombre}</h3>
+                          {pedido.localidad && (
+                            <span style={{ fontSize: 10, fontWeight: 800, color: '#0F6E56', background: 'rgba(15,110,86,0.1)', padding: '3px 8px', borderRadius: 8, textTransform: 'uppercase' }}>
+                              📍 {pedido.localidad}
+                            </span>
+                          )}
+                        </div>
                         
                         {/* SLA Badge — indicador de urgencia operativa */}
                         <div style={{ marginBottom: 8 }}>

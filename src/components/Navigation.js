@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useUser } from '@/context/UserContext';
 import ProfileSheet from '@/components/ProfileSheet';
@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const { profile } = useUser();
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifDrawer, setShowNotifDrawer] = useState(false);
@@ -37,6 +38,14 @@ export default function Navigation() {
         setUnreadCount(c => c + 1);
         // Prepend new notification to drawer list if it's open
         setNotificaciones(prev => [payload.new, ...prev]);
+        
+        // 🔊 Play sound alert
+        try {
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+          audio.play().catch(e => console.log("Notification sound blocked by browser:", e));
+        } catch (err) {
+          console.error("Audio error:", err);
+        }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notificaciones', filter: `user_id=eq.${profile.id}` }, payload => {
         if (payload.new.leida) {
@@ -91,16 +100,16 @@ export default function Navigation() {
   if (pathname === '/login') return null;
 
   const navItems = [
-    ...(profile?.role === 'admin'
-      ? [{ href: '/admin/dashboard', emoji: '📊', label: 'Dashboard' }]
-      : []),
     { href: '/', emoji: '➕', label: 'Crear' },
-    { href: '/pedidos', emoji: '📦', label: 'Pedidos' },
+    { href: '/pedidos', emoji: '📦', label: 'Ver Pedido' },
   ];
 
   const adminItems = [
     ...(profile?.role === 'admin'
-      ? [{ href: '/admin/configuracion', emoji: '⚙️', label: 'Configuración' }]
+      ? [
+          { href: '/admin/dashboard', emoji: '📊', label: 'Dashboard' },
+          { href: '/admin/configuracion', emoji: '⚙️', label: 'Configuración' }
+        ]
       : []),
   ];
 
@@ -187,14 +196,15 @@ export default function Navigation() {
                   <div
                     key={notif.id}
                     onClick={async () => {
-                      if (notif.order_id) {
-                        setShowNotifDrawer(false);
-                        // marcar como leída si no lo está
-                        if (!notif.leida) {
-                          await supabase.from('notificaciones').update({ leida: true }).eq('id', notif.id);
+                        if (notif.order_id) {
+                          setShowNotifDrawer(false);
+                          // marcar como leída si no lo está
+                          if (!notif.leida) {
+                            await supabase.from('notificaciones').update({ leida: true }).eq('id', notif.id);
+                          }
+                          // Use router.push for smoother navigation
+                          router.push(`/pedidos/${notif.order_id}`);
                         }
-                        window.location.href = `/pedidos/${notif.order_id}`;
-                      }
                     }}
                     style={{
                       padding: '12px 16px',
@@ -266,7 +276,7 @@ export default function Navigation() {
         margin: '0 auto',
       }}>
 
-        {/* Perfil */}
+        {/* 1. Mi Cuenta */}
         <button
           onClick={() => setShowProfile(true)}
           style={{
@@ -283,43 +293,99 @@ export default function Navigation() {
           </span>
         </button>
 
-        {/* Navegación principal */}
-        {navItems.map(item => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                textDecoration: 'none',
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                gap: 4, padding: '4px 10px', borderRadius: 12,
-                background: isActive ? 'rgba(15,110,86,0.08)' : 'transparent',
-                transition: 'background 0.15s',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              <span style={{
-                fontSize: 22,
-                filter: isActive ? 'none' : 'grayscale(100%) opacity(45%)',
-                transition: 'filter 0.2s',
-                lineHeight: 1,
-                display: 'block'
-              }}>
-                {item.emoji}
-              </span>
-              <span style={{
-                fontSize: 10, fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--brand)' : '#9ca3af',
-                lineHeight: 1, marginTop: 4
-              }}>
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
+        {/* 2. Dashboard (Solo Admin) */}
+        {profile?.role === 'admin' && (
+          <Link
+            href="/admin/dashboard"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/admin/dashboard' ? 'rgba(15,110,86,0.08)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/admin/dashboard' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              📊
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/admin/dashboard' ? 700 : 500,
+              color: pathname === '/admin/dashboard' ? 'var(--brand)' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Dashboard
+            </span>
+          </Link>
+        )}
 
-        {/* Botón Campana — abre drawer */}
+        {/* 3. Crear */}
+        <Link
+          href="/"
+          style={{
+            textDecoration: 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 4, padding: '4px 10px', borderRadius: 12,
+            background: pathname === '/' ? 'rgba(15,110,86,0.08)' : 'transparent',
+            transition: 'background 0.15s',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span style={{
+            fontSize: 22,
+            filter: pathname === '/' ? 'none' : 'grayscale(100%) opacity(45%)',
+            transition: 'filter 0.2s',
+            lineHeight: 1,
+            display: 'block'
+          }}>
+            ➕
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: pathname === '/' ? 700 : 500,
+            color: pathname === '/' ? 'var(--brand)' : '#9ca3af',
+            lineHeight: 1, marginTop: 4
+          }}>
+            Crear
+          </span>
+        </Link>
+
+        {/* 4. Ver Pedido */}
+        <Link
+          href="/pedidos"
+          style={{
+            textDecoration: 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 4, padding: '4px 10px', borderRadius: 12,
+            background: pathname === '/pedidos' ? 'rgba(15,110,86,0.08)' : 'transparent',
+            transition: 'background 0.15s',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span style={{
+            fontSize: 22,
+            filter: pathname === '/pedidos' ? 'none' : 'grayscale(100%) opacity(45%)',
+            transition: 'filter 0.2s',
+            lineHeight: 1,
+            display: 'block'
+          }}>
+            📦
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: pathname === '/pedidos' ? 700 : 500,
+            color: pathname === '/pedidos' ? 'var(--brand)' : '#9ca3af',
+            lineHeight: 1, marginTop: 4
+          }}>
+            Ver Pedido
+          </span>
+        </Link>
+
+        {/* 5. Notificación */}
         <button
           onClick={openNotifDrawer}
           style={{
@@ -340,31 +406,23 @@ export default function Navigation() {
             }}>
               🔔
             </span>
-
-            {/* Badge */}
             {unreadCount > 0 && (
               <span style={{
                 position: 'absolute',
                 top: -4, right: -8,
-                background: '#ef4444',
-                color: 'white',
-                fontSize: '10px',
-                fontWeight: 'bold',
-                padding: '2px 5px',
-                borderRadius: '10px',
-                lineHeight: 1,
-                border: '2px solid white',
+                background: '#ef4444', color: 'white',
+                fontSize: '10px', fontWeight: 'bold',
+                padding: '2px 5px', borderRadius: '10px',
+                lineHeight: 1, border: '2px solid white',
                 animation: 'pulse 2s infinite',
-                minWidth: 16,
-                textAlign: 'center',
+                minWidth: 16, textAlign: 'center',
               }}>
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </div>
           <span style={{
-            fontSize: 10,
-            fontWeight: showNotifDrawer ? 700 : 500,
+            fontSize: 10, fontWeight: showNotifDrawer ? 700 : 500,
             color: showNotifDrawer ? 'var(--brand)' : '#9ca3af',
             lineHeight: 1, marginTop: 4
           }}>
@@ -372,41 +430,37 @@ export default function Navigation() {
           </span>
         </button>
 
-        {/* Items Administrativos (Config) */}
-        {adminItems.map(item => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                textDecoration: 'none',
-                display: 'flex', flexDirection: 'column', alignItems: 'center',
-                gap: 4, padding: '4px 10px', borderRadius: 12,
-                background: isActive ? 'rgba(15,110,86,0.08)' : 'transparent',
-                transition: 'background 0.15s',
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              <span style={{
-                fontSize: 22,
-                filter: isActive ? 'none' : 'grayscale(100%) opacity(45%)',
-                transition: 'filter 0.2s',
-                lineHeight: 1,
-                display: 'block'
-              }}>
-                {item.emoji}
-              </span>
-              <span style={{
-                fontSize: 10, fontWeight: isActive ? 700 : 500,
-                color: isActive ? 'var(--brand)' : '#9ca3af',
-                lineHeight: 1, marginTop: 4
-              }}>
-                {item.label}
-              </span>
-            </Link>
-          );
-        })}
+        {/* 6. Configuración (Solo Admin) */}
+        {profile?.role === 'admin' && (
+          <Link
+            href="/admin/configuracion"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/admin/configuracion' ? 'rgba(15,110,86,0.08)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/admin/configuracion' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              ⚙️
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/admin/configuracion' ? 700 : 500,
+              color: pathname === '/admin/configuracion' ? 'var(--brand)' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Configuración
+            </span>
+          </Link>
+        )}
       </nav>
 
       {/* Profile sheet */}

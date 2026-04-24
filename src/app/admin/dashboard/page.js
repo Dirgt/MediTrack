@@ -39,7 +39,7 @@ export default function DashboardAdmin() {
     // 1. Todos los pedidos con su vendedor
     const { data: pedidos } = await supabase
       .from('orders')
-      .select('id, estado, creado_en, cliente_nombre, vendedor_id, profiles!orders_vendedor_id_fkey(nombre_completo)')
+      .select('id, estado, creado_en, cliente_nombre, vendedor_id, localidad, profiles!orders_vendedor_id_fkey(nombre_completo)')
       .order('creado_en', { ascending: false });
 
     // 2. Total clientes
@@ -70,10 +70,26 @@ export default function DashboardAdmin() {
     });
     const topVendedores = Object.values(vendedorMap).sort((a, b) => b.total - a.total).slice(0, 5);
 
+    // Por localidad
+    const porLocalidad = {};
+    pedidos.forEach(p => {
+      const loc = p.localidad || 'Sin asignar';
+      porLocalidad[loc] = (porLocalidad[loc] || 0) + 1;
+    });
+
     // Pedidos recientes (últimos 5)
     const pedidosRecientes = pedidos.slice(0, 5);
 
-    setStats({ totalPedidos, pedidosHoy, totalClientes: totalClientes || 0, tasaEntrega, porEstado, topVendedores, pedidosRecientes });
+    setStats({ 
+      totalPedidos, 
+      pedidosHoy, 
+      totalClientes: totalClientes || 0, 
+      tasaEntrega, 
+      porEstado, 
+      topVendedores, 
+      pedidosRecientes,
+      porLocalidad 
+    });
     setLoading(false);
   }, []);
 
@@ -115,33 +131,33 @@ export default function DashboardAdmin() {
       {/* ══ HERO HEADER ══ */}
       <div style={{
         background: 'linear-gradient(135deg, #084032 0%, #0F6E56 55%, #1a9b78 100%)',
-        padding: '48px 24px 80px',
-        borderRadius: '0 0 40px 40px',
+        padding: '32px 20px 48px',
+        borderRadius: '0 0 32px 32px',
         position: 'relative', overflow: 'hidden',
         boxShadow: '0 10px 30px rgba(8,64,50,0.15)'
       }}>
         <div style={{ position:'absolute', top:-40, right:-40, width:200, height:200, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }}/>
         <div style={{ position:'absolute', bottom:-20, left:-30, width:150, height:150, borderRadius:'50%', background:'rgba(255,255,255,0.03)' }}/>
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
             <span style={{ 
               background:'rgba(255,255,255,0.18)', color:'white', fontSize:10, fontWeight:900, 
               padding:'4px 14px', borderRadius:100, letterSpacing:1.5, backdropFilter:'blur(8px)',
               border: '1px solid rgba(255,255,255,0.2)', textTransform: 'uppercase'
             }}>ADMINISTRADOR</span>
             <div style={{ width:4, height:4, borderRadius:'50%', background:'rgba(255,255,255,0.4)' }} />
-            <p style={{ color:'rgba(255,255,255,0.85)', fontSize:14, fontWeight:700, margin:0 }}>{profile?.nombre_completo}</p>
+            <p style={{ color:'rgba(255,255,255,0.85)', fontSize:13, fontWeight:700, margin:0 }}>{profile?.nombre_completo}</p>
           </div>
-          <h1 style={{ color:'white', fontSize:32, fontWeight:900, margin:0, lineHeight:1, letterSpacing: '-1px' }}>
-            Panel de Control
+          <h1 style={{ color:'white', fontSize:26, fontWeight:900, margin:0, lineHeight:1, letterSpacing: '-0.5px' }}>
+            Dashboard
           </h1>
-          <p style={{ color:'rgba(255,255,255,0.65)', fontSize:14, margin:'10px 0 0', fontWeight:500 }}>
-            Visualización estratégica de la operación
+          <p style={{ color:'rgba(255,255,255,0.65)', fontSize:13, margin:'8px 0 0', fontWeight:500 }}>
+            Visualización operativa y logística
           </p>
         </div>
       </div>
 
-      <div style={{ padding: '0 18px', marginTop: -45, position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div style={{ padding: '0 16px', marginTop: -20, position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {loading ? (
           <div style={{ textAlign:'center', padding:'40px 0', color:'#94a3b8', fontWeight:600 }}>Cargando dashboard...</div>
@@ -170,6 +186,40 @@ export default function DashboardAdmin() {
               ))}
             </div>
 
+            {/* ── Quick Actions ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              <button 
+                onClick={() => router.push('/')}
+                style={{
+                  background: 'linear-gradient(135deg, #0F6E56 0%, #084032 100%)',
+                  borderRadius: 20, padding: '16px', border: 'none', color: 'white',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', boxShadow: '0 8px 20px rgba(15,110,86,0.2)',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <span style={{ fontSize: 24 }}>➕</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>Nuevo Pedido</span>
+              </button>
+              <button 
+                onClick={() => router.push('/admin/configuracion?tab=clientes')}
+                style={{
+                  background: 'white', borderRadius: 20, padding: '16px', 
+                  border: '2px solid #0F6E56', color: '#0F6E56',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.05)',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-4px)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <span style={{ fontSize: 24 }}>🏪</span>
+                <span style={{ fontSize: 13, fontWeight: 800 }}>Crear Cliente</span>
+              </button>
+            </div>
+
             {/* ── Pedidos por Estado ── */}
             <div style={{ background: 'white', borderRadius: 24, padding: '20px', boxShadow: '0 8px 24px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
               <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -190,6 +240,32 @@ export default function DashboardAdmin() {
                       <div style={{ height: 8, background: '#f1f5f9', borderRadius: 8, overflow: 'hidden' }}>
                         <div style={{
                           height: '100%', width: `${pct}%`, background: cfg.color,
+                          borderRadius: 8, transition: 'width 0.5s ease',
+                        }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Pedidos por Localidad ── */}
+            <div style={{ background: 'white', borderRadius: 24, padding: '20px', boxShadow: '0 8px 24px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+              <p style={{ margin: '0 0 16px', fontSize: 12, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1 }}>
+                📍 Cobertura por Localidad
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {Object.entries(stats.porLocalidad || {}).sort((a,b) => b[1] - a[1]).map(([loc, count]) => {
+                  const pct = stats.totalPedidos > 0 ? Math.round((count / stats.totalPedidos) * 100) : 0;
+                  return (
+                    <div key={loc}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#084032' }}>{loc}</span>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#0F6E56' }}>{count}</span>
+                      </div>
+                      <div style={{ height: 6, background: '#f1f5f9', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', width: `${pct}%`, background: 'var(--brand)',
                           borderRadius: 8, transition: 'width 0.5s ease',
                         }} />
                       </div>
@@ -259,9 +335,16 @@ export default function DashboardAdmin() {
                       <div style={{ position: 'relative' }}>
                         <div style={{ width: 4, height: '100%', position: 'absolute', left: -14, top: 0, bottom: 0, borderRadius: 4, background: cfg.color }} />
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#084032' }}>{p.cliente_nombre}</p>
-                        <p style={{ margin: '2px 0 0', fontSize: 12, color: '#64748b' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#084032', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.cliente_nombre}</p>
+                          {p.localidad && (
+                            <span style={{ fontSize: 9, fontWeight: 800, color: '#0F6E56', background: 'rgba(15,110,86,0.1)', padding: '2px 6px', borderRadius: 6, textTransform: 'uppercase' }}>
+                              {p.localidad}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {p.profiles?.nombre_completo} · {new Date(p.creado_en).toLocaleDateString('es-CO', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>

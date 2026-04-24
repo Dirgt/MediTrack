@@ -24,7 +24,7 @@ function getAdminSupabaseClient() {
 export async function createStaffAccount(data) {
   try {
     const supabaseAdmin = getAdminSupabaseClient();
-    const { email, password, full_name, role_type, meta_mensual, porcentaje_comision } = data;
+    const { email, password, full_name, role_type } = data;
 
     // 1. Crear el usuario en la tabla interna de Supabase Auth
     // Gracias al Trigger insertado, `email_confirmed_at` se marcará automáticamente
@@ -54,9 +54,7 @@ export async function createStaffAccount(data) {
       .from('profiles')
       .update({
         role: role_type,
-        nombre_completo: full_name,
-        meta_mensual: meta_mensual || 0,
-        porcentaje_comision: porcentaje_comision || 0
+        nombre_completo: full_name
       })
       .eq('id', userId);
 
@@ -82,15 +80,13 @@ export async function createStaffAccount(data) {
 export async function updateStaffAccount(userId, data) {
   try {
     const supabaseAdmin = getAdminSupabaseClient();
-    const { nombre_completo, role, meta_mensual, porcentaje_comision } = data;
+    const { nombre_completo, role } = data;
 
     const { error } = await supabaseAdmin
       .from('profiles')
       .update({
         nombre_completo,
-        role,
-        meta_mensual: meta_mensual || 0,
-        porcentaje_comision: porcentaje_comision || 0,
+        role
       })
       .eq('id', userId);
 

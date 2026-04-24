@@ -20,6 +20,7 @@ export default function CrearPedido() {
   const [fechaEntrega, setFechaEntrega] = useState('');
   const [tipoFactura, setTipoFactura] = useState('');
   const [tipoPago, setTipoPago] = useState('');
+  const [localidad, setLocalidad] = useState('');
   const [observaciones, setObservaciones] = useState('');
   const [items, setItems] = useState([{ medicamento_nombre: '', cantidad: 1 }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,6 +85,7 @@ export default function CrearPedido() {
     if (!fechaEntrega) { setError('Selecciona la fecha de entrega (es obligatoria).'); return; }
     if (!tipoFactura) { setError('Selecciona el tipo de factura (es obligatorio).'); return; }
     if (!tipoPago) { setError('Selecciona el tipo de pago (es obligatorio).'); return; }
+    if (!localidad) { setError('Selecciona la localidad (es obligatoria).'); return; }
 
     // Check medicamentos
     const itemsValidos = items.every(it => it.medicamento_nombre.trim() !== '');
@@ -103,7 +105,8 @@ export default function CrearPedido() {
         estado: 'pendiente',
         fecha_entrega: fechaEntrega || null,
         tipo_factura: tipoFactura,
-        tipo_pago: tipoPago
+        tipo_pago: tipoPago,
+        localidad: localidad
       })
       .select().single();
 
@@ -116,13 +119,25 @@ export default function CrearPedido() {
     setIsSubmitting(false);
     if (itemsErr) { setError(itemsErr.message); return; }
 
+    // ── FEEDBACK DE ÉXITO ──
+    try {
+      // Sonido (confirmación local inmediata)
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.play().catch(e => console.log("Audio play error:", e));
+      
+      // NOTA: Las notificaciones ahora se generan automáticamente vía Trigger en la DB
+    } catch (err) {
+      console.error("Error generating local feedback:", err);
+    }
+
     setSuccess(true);
     setClienteId('');
     setClienteSearch('');
     setObservaciones('');
     setFechaEntrega('');
-    setTipoFactura('remision');
-    setTipoPago('contado');
+    setTipoFactura('');
+    setTipoPago('');
+    setLocalidad('');
     setItems([{ medicamento_nombre: '', cantidad: 1 }]);
     setTimeout(() => setSuccess(false), 5000);
   };
@@ -142,6 +157,7 @@ export default function CrearPedido() {
         padding: '28px 20px 80px',
         borderRadius: '0 0 36px 36px',
         position: 'relative', overflow: 'hidden', marginBottom: -54,
+        zIndex: 1 // Lower than success message
       }}>
         <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
         <div style={{ position: 'absolute', bottom: -20, left: -20, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
@@ -159,8 +175,20 @@ export default function CrearPedido() {
 
         {/* Success */}
         {success && (
-          <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 18, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, animation: 'slideDown .35s cubic-bezier(.34,1.2,.64,1)' }}>
-            <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(16,185,129,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🎉</div>
+          <div style={{ 
+            position: 'relative',
+            zIndex: 100, // Ensure it's above the header
+            background: 'white', // More contrast
+            border: '2px solid #10b981',
+            borderRadius: 18, 
+            padding: '18px 20px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 14, 
+            animation: 'slideDown .35s cubic-bezier(.34,1.2,.64,1)',
+            boxShadow: '0 15px 30px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🎉</div>
             <div>
               <p style={{ fontWeight: 800, color: '#065f46', margin: 0, fontSize: 15 }}>¡Pedido enviado!</p>
               <p style={{ color: '#047857', fontSize: 13, margin: '2px 0 0' }}>El equipo de despacho ya tiene tu solicitud.</p>
@@ -354,23 +382,66 @@ export default function CrearPedido() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                   {/* Tipo de Factura */}
                   <div>
                     <label className="form-label-premium">Tipo de Factura <span style={{ color: '#ef4444' }}>*</span></label>
-                    <div style={{ display: 'flex', background: 'rgba(249,250,251,1)', borderRadius: 14, border: '2px solid rgba(0,0,0,0.1)', padding: 4 }}>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('remision')} style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 10, backgroundColor: tipoFactura === 'remision' ? '#0F6E56' : 'transparent', color: tipoFactura === 'remision' ? 'white' : 'var(--text-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Remisión</button>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('factura_electronica')} style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 10, backgroundColor: tipoFactura === 'factura_electronica' ? '#0F6E56' : 'transparent', color: tipoFactura === 'factura_electronica' ? 'white' : 'var(--text-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Electrónica</button>
+                    <div style={{ display: 'flex', background: 'white', borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)', padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('remision')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'remision' ? '#0F6E56' : 'transparent', color: tipoFactura === 'remision' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Remisión</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('factura_electronica')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'factura_electronica' ? '#0F6E56' : 'transparent', color: tipoFactura === 'factura_electronica' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Electrónica</button>
                     </div>
                   </div>
 
                   {/* Tipo de Pago */}
                   <div>
                     <label className="form-label-premium">Tipo de Pago <span style={{ color: '#ef4444' }}>*</span></label>
-                    <div style={{ display: 'flex', background: 'rgba(249,250,251,1)', borderRadius: 14, border: '2px solid rgba(0,0,0,0.1)', padding: 4 }}>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('contado')} style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 10, backgroundColor: tipoPago === 'contado' ? '#0F6E56' : 'transparent', color: tipoPago === 'contado' ? 'white' : 'var(--text-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Contado</button>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('credito')} style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 10, backgroundColor: tipoPago === 'credito' ? '#0F6E56' : 'transparent', color: tipoPago === 'credito' ? 'white' : 'var(--text-muted)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Crédito</button>
+                    <div style={{ display: 'flex', background: 'white', borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)', padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('contado')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'contado' ? '#0F6E56' : 'transparent', color: tipoPago === 'contado' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Contado</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('credito')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'credito' ? '#0F6E56' : 'transparent', color: tipoPago === 'credito' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Crédito</button>
                     </div>
+                  </div>
+                </div>
+
+                {/* Localidad Segmented Control */}
+                <div className="form-group" style={{ marginBottom: 4 }}>
+                  <label className="form-label-premium">Localidad <span style={{ color: '#ef4444' }}>*</span></label>
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(2, 1fr)', 
+                    gap: 8, 
+                    background: 'rgba(249,250,251,0.5)', 
+                    borderRadius: 20, 
+                    border: '1px solid rgba(0,0,0,0.08)', 
+                    padding: 6,
+                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+                  }}>
+                    {['Engativá', 'Kennedy', 'Bosa', 'Soacha'].map(loc => (
+                      <button
+                        key={loc}
+                        type="button"
+                        className="btn-dynamic"
+                        onClick={() => setLocalidad(loc)}
+                        style={{
+                          padding: '12px 0',
+                          border: 'none',
+                          borderRadius: 14,
+                          backgroundColor: localidad === loc ? '#0F6E56' : 'white',
+                          color: localidad === loc ? 'white' : '#64748b',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          boxShadow: localidad === loc ? '0 4px 12px rgba(15,110,86,0.2)' : '0 1px 2px rgba(0,0,0,0.05)',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6
+                        }}
+                      >
+                        <span style={{ fontSize: 14, opacity: localidad === loc ? 1 : 0.4 }}>📍</span>
+                        {loc}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>

@@ -60,6 +60,15 @@ export default function ConfiguracionAdmin() {
   useEffect(() => { fetchUsers(); }, []);
 
   useEffect(() => {
+    // Escuchar el parámetro 'tab' de la URL para cambiar de pestaña automáticamente
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab && ['usuarios', 'clientes', 'general'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'clientes' && allClientes.length === 0) {
       fetchAllClientes();
     }
@@ -845,11 +854,36 @@ export default function ConfiguracionAdmin() {
                                   </div>
                                 </>
                               )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                           {/* ── Shortcut: Crear cliente para este vendedor ── */}
+                           <div style={{ marginTop: 24, padding: '20px', borderRadius: 20, background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                               <div style={{ width: 40, height: 40, borderRadius: 12, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>➕</div>
+                               <div>
+                                 <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: '#084032' }}>¿Necesitas registrar un nuevo punto?</p>
+                                 <p style={{ margin: 0, fontSize: 11, color: '#64748b', fontWeight: 500 }}>Crea un cliente directamente para {u.nombre_completo}</p>
+                               </div>
+                             </div>
+                             <button
+                               onClick={() => {
+                                 setActiveTab('clientes');
+                                 setShowClientForm(true);
+                                 setClientFormData({ nombre: '', telefono: '', ciudad: '', vendedor_id: u.id });
+                                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                               }}
+                               style={{
+                                 width: '100%', padding: '12px', borderRadius: 12, border: 'none',
+                                 background: '#0F6E56', color: 'white', fontWeight: 800, fontSize: 13,
+                                 cursor: 'pointer', boxShadow: '0 4px 12px rgba(15,110,86,0.2)'
+                               }}
+                             >
+                               Registrar Cliente Nuevo ➔
+                             </button>
+                           </div>
+                         </div>
+                       )}
+                     </div>
+                   )}
+                 </div>
                   );
                 })}
 
