@@ -308,9 +308,16 @@ export default function MisPedidos() {
   ];
 
   // Acciones
-  const fetchHistorial = async (orderId) => {
-    if (historial[orderId]) return;
-    const { data } = await supabase.from('order_history').select('*').eq('order_id', orderId).order('creado_en', { ascending: true });
+  const fetchHistorial = async (orderId, force = false) => {
+    if (historial[orderId] && !force) return;
+    const { data } = await supabase
+      .from('order_history')
+      .select(`
+        id, estado_anterior, estado_nuevo, motivo_rechazo, nota_interna, creado_en,
+        profiles!order_history_cambiado_por_fkey(nombre_completo)
+      `)
+      .eq('order_id', orderId)
+      .order('creado_en', { ascending: true });
     if (data) setHistorial(p => ({ ...p, [orderId]: data }));
   };
 
@@ -319,8 +326,12 @@ export default function MisPedidos() {
     const res = await cambiarEstadoPedido(pedido.id, accion.a, { ...opciones, adminId: user?.id });
     setLoadingAction(null);
     setModalData(null);
-    if (res.success) showToast(`Pedido pasado a ${ESTADO[accion.a]?.label}`);
-    else showToast(res.error, false);
+    if (res.success) {
+      showToast(`Pedido pasado a ${ESTADO[accion.a]?.label}`);
+      // Invalidar caché del historial para que se recargue con el nuevo evento
+      setHistorial(p => { const next = { ...p }; delete next[pedido.id]; return next; });
+      setTimeout(() => fetchHistorial(pedido.id, true), 600);
+    } else showToast(res.error, false);
   };
 
   const ejecutarCancelar = async (pedido, motivo) => {
@@ -553,6 +564,78 @@ export default function MisPedidos() {
                           )}
                         </div>
                       )}
+
+                       {/* ── TRAZABILIDAD / BITÁCORA ── */}
+                       {(() => {
+                         const log = historial[pedido.id] || [];
+                         return (
+                           <div style={{ padding:'0 20px 20px' }}>
+                             <p style={{ margin:'0 0 12px', fontSize:12, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1 }}>🕓 Trazabilidad del Pedido</p>
+
+                             {/* Evento de creación */}
+                             <div style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+                               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                                 <div style={{ width:32, height:32, borderRadius:'50%', background:'rgba(15,110,86,0.12)', border:'2px solid #0F6E56', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>🆕</div>
+                                 {log.length > 0 && <div style={{ width:2, background:'#e2e8f0', minHeight:24, marginTop:4 }}/>}
+                               </div>
+                               <div style={{ paddingBottom: log.length > 0 ? 16 : 0, flex:1 }}>
+                                 <div style={{ fontSize:13, fontWeight:700, color:'#084032' }}>Pedido creado</div>
+                                 <div style={{ fontSize:12, color:'#64748b', marginTop:2 }}>
+                                   {new Date(pedido.creado_en).toLocaleString('es-CO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })}
+                                 </div>
+                                 <div style={{ fontSize:12, color:'#0F6E56', fontWeight:600, marginTop:2 }}>
+                                   👤 {pedido.profiles?.nombre_completo || 'Vendedor'}
+                                 </div>
+                               </div>
+                             </div>
+
+                             {/* Eventos de cambio de estado */}
+                             {log.map((ev, idx) => {
+                               const cfgA  = ESTADO[ev.estado_anterior];
+                               const cfgN  = ESTADO[ev.estado_nuevo];
+                               const isLast = idx === log.length - 1;
+                               const quien = ev.profiles?.nombre_completo || 'Sistema';
+                               const fecha = new Date(ev.creado_en).toLocaleString('es-CO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                               return (
+                                 <div key={ev.id} style={{ display:'flex', gap:12, alignItems:'flex-start' }}>
+                                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flexShrink:0 }}>
+                                     <div style={{
+                                       width:32, height:32, borderRadius:'50%',
+                                       background: cfgN ? cfgN.bg : 'rgba(100,116,139,0.1)',
+                                       border: `2px solid ${cfgN ? cfgN.color : '#94a3b8'}`,
+                                       display:'flex', alignItems:'center', justifyContent:'center', fontSize:14
+                                     }}>{cfgN?.emoji || '🔄'}</div>
+                                     {!isLast && <div style={{ width:2, background:'#e2e8f0', minHeight:24, marginTop:4 }}/>}
+                                   </div>
+                                   <div style={{ paddingBottom: isLast ? 0 : 16, flex:1 }}>
+                                     <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                                       <span style={{ fontSize:11, fontWeight:700, color: cfgA?.color || '#94a3b8', background: cfgA?.bg || '#f1f5f9', padding:'2px 8px', borderRadius:8 }}>
+                                         {cfgA?.label || ev.estado_anterior}
+                                       </span>
+                                       <span style={{ fontSize:11, color:'#94a3b8' }}>→</span>
+                                       <span style={{ fontSize:11, fontWeight:700, color: cfgN?.color || '#084032', background: cfgN?.bg || '#f1f5f9', padding:'2px 8px', borderRadius:8 }}>
+                                         {cfgN?.label || ev.estado_nuevo}
+                                       </span>
+                                     </div>
+                                     <div style={{ fontSize:12, color:'#64748b', marginTop:3 }}>{fecha}</div>
+                                     <div style={{ fontSize:12, color:'#0F6E56', fontWeight:600, marginTop:2 }}>👤 {quien}</div>
+                                     {ev.motivo_rechazo && (
+                                       <div style={{ fontSize:12, color:'#dc2626', marginTop:4, background:'#fef2f2', padding:'6px 10px', borderRadius:8 }}>🚫 {ev.motivo_rechazo}</div>
+                                     )}
+                                     {ev.nota_interna && (
+                                       <div style={{ fontSize:12, color:'#b45309', marginTop:4, background:'#fffbeb', padding:'6px 10px', borderRadius:8 }}>📝 {ev.nota_interna}</div>
+                                     )}
+                                   </div>
+                                 </div>
+                               );
+                             })}
+
+                             {log.length === 0 && (
+                               <div style={{ fontSize:13, color:'#94a3b8', textAlign:'center', padding:'8px 0' }}>Sin cambios de estado aún</div>
+                             )}
+                           </div>
+                         );
+                       })()}
 
                       <div style={{ padding:'20px', background:'white', borderTop:'1px solid #e2e8f0', display:'flex', flexDirection:'column', gap:12 }}>
                         
