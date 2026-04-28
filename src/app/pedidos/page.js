@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
@@ -178,6 +178,69 @@ function ModalAccion({ accion, pedido, adminId, onConfirm, onCancel }) {
   );
 }
 
+// ── Modal de Detalle Completo (Para apertura directa) ──
+function ModalDetalle({ pedido, historial, onCancel, isAdmin, accs, onAccion, onCancelar }) {
+  const items = pedido.order_items || [];
+  const uds   = items.reduce((a,i) => a + (parseInt(i.cantidad)||0), 0);
+  const cfg   = ESTADO[pedido.estado] || ESTADO.pendiente;
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', backdropFilter:'blur(4px)', padding: 20 }}>
+      <div style={{ position:'absolute', inset:0 }} onClick={onCancel} />
+      <div style={{ width:'100%', maxWidth:500, background:'white', borderRadius:28, padding:0, animation:'popIn .3s ease', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', maxHeight:'90vh', overflowY:'auto', position:'relative' }}>
+        
+        {/* Header Modal */}
+        <div style={{ background: 'linear-gradient(135deg, #084032 0%, #0F6E56 100%)', padding:24, borderRadius:'28px 28px 0 0', position:'relative', color:'white' }}>
+          <h3 style={{ margin:0, fontSize:22, fontWeight:900 }}>Pedido #{pedido.numero_pedido}</h3>
+          <p style={{ margin:'4px 0 0', opacity:0.8, fontSize:14 }}>{pedido.cliente_nombre}</p>
+          <div style={{ marginTop:12, background:cfg.bg, color:cfg.color, display:'inline-block', padding:'4px 12px', borderRadius:10, fontSize:12, fontWeight:800 }}>
+             {cfg.emoji} {cfg.label}
+          </div>
+        </div>
+
+        <div style={{ padding:20 }}>
+           <p style={{ margin:'0 0 12px', fontSize:12, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1 }}>Medicamentos Solicitados</p>
+           <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:24 }}>
+             {items.map((it, idx)=>(
+               <div key={idx} style={{ display:'flex', justifyContent:'space-between', background:'#f8fafc', padding:'12px 16px', borderRadius:16, border:'1px solid #e2e8f0' }}>
+                 <span style={{ fontSize:15, fontWeight:600, color:'#084032' }}>{it.medicamento_nombre}</span>
+                 <span style={{ fontSize:15, fontWeight:800, color:'#0F6E56', background:'rgba(15,110,86,0.1)', padding:'2px 12px', borderRadius:12 }}>×{it.cantidad}</span>
+               </div>
+             ))}
+           </div>
+
+           <p style={{ margin:'0 0 12px', fontSize:12, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1 }}>Trazabilidad</p>
+           <div style={{ background:'#f8fafc', borderRadius:16, padding:16, marginBottom:24 }}>
+              <div style={{ fontSize:13, color:'#084032', display:'flex', justifyContent:'space-between' }}>
+                <strong>🆕 Creado</strong>
+                <span>{new Date(pedido.creado_en).toLocaleDateString()}</span>
+              </div>
+              {(historial[pedido.id] || []).map(h => (
+                <div key={h.id} style={{ fontSize:13, color:'#084032', marginTop:8, paddingTop:8, borderTop:'1px solid #e2e8f0', display:'flex', justifyContent:'space-between' }}>
+                   <span>{ESTADO[h.estado_nuevo]?.emoji} {ESTADO[h.estado_nuevo]?.label}</span>
+                   <span style={{ color:'#94a3b8' }}>{new Date(h.creado_en).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                </div>
+              ))}
+           </div>
+
+           {isAdmin && accs.length > 0 && (
+             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+               {accs.map(acc => (
+                 <button key={acc.a} onClick={()=>onAccion(pedido, acc)} style={{
+                   background:acc.color, color:'white', border:'none', padding:'16px', borderRadius:16,
+                   fontSize:15, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10
+                 }}>
+                   <span>{acc.icon}</span> {acc.label}
+                 </button>
+               ))}
+             </div>
+           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Componente principal ──
 export default function MisPedidos() {
   const { user, profile } = useUser();
@@ -197,6 +260,7 @@ export default function MisPedidos() {
   
   const [modalData, setModalData]     = useState(null);
   const [modalCancelar, setModalCancelar] = useState(null);
+  const [pedidoDetalle, setPedidoDetalle] = useState(null);
   const [historial, setHistorial]     = useState({});
   const [loadingAction, setLoadingAction] = useState(null);
   const [toast, setToast]             = useState(null);
@@ -207,6 +271,21 @@ export default function MisPedidos() {
   const [totalRegistros, setTotalRegistros] = useState(0);
 
   const [clientesUnicos, setClientesUnicos] = useState([]);
+
+  // ── Buscador rápido (hooks SIEMPRE al inicio, antes de cualquier return) ──
+  const [busqueda, setBusqueda] = useState('');
+  const searchRef = useRef(null);
+
+  const pedidosFiltrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase().replace(/^#/, '');
+    if (!q) return pedidos;
+    return pedidos.filter(p =>
+      String(p.numero_pedido || '').includes(q) ||
+      (p.cliente_nombre || '').toLowerCase().includes(q) ||
+      (p.localidad || '').toLowerCase().includes(q) ||
+      (p.profiles?.nombre_completo || '').toLowerCase().includes(q)
+    );
+  }, [pedidos, busqueda]);
 
   const showToast = (msg, ok = true) => {
     setToast({ msg, ok });
@@ -219,7 +298,7 @@ export default function MisPedidos() {
     setLoading(true);
     let q = supabase
       .from('orders')
-      .select(`id, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
+      .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
                observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
                intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
                order_items(medicamento_nombre, cantidad),
@@ -260,6 +339,33 @@ export default function MisPedidos() {
     }
     setLoading(false);
   }, [user, isAdmin, filtroEstado, filtroRango, filtroVendedor, filtroCliente, pagina, porPagina]);
+
+  // NUEVO: Manejar apertura directa desde URL (ej. desde el Calendario)
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('id');
+    if (orderId) {
+      const fetchDirect = async () => {
+        const { data } = await supabase
+          .from('orders')
+          .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
+                   observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
+                   intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
+                   order_items(medicamento_nombre, cantidad),
+                   profiles!orders_vendedor_id_fkey(id, nombre_completo)`)
+          .eq('id', orderId)
+          .single();
+        if (data) {
+          setPedidoDetalle(data);
+          fetchHistorial(orderId, true);
+          // Limpiar la URL para evitar que se reabra al recargar
+          window.history.replaceState({}, document.title, '/pedidos');
+        }
+      };
+      fetchDirect();
+    }
+  }, [user]);
 
   const fetchClientes = useCallback(async () => {
     if (!user) return;
@@ -343,12 +449,9 @@ export default function MisPedidos() {
 
   if (!user) return <div style={{textAlign:'center', marginTop:100}}>Cargando...</div>;
 
-  // Calcular stats rápidas (deben ser locales a la página para no complicar, o desde totalRegistros)
-  // Como ahora "pedidos" solo tiene los filtrados de esta página, las stats rápidas las mantenemos ocultas 
-  // o las mostramos basadas en los de esta página. Mejor dejamos las que tenemos para dar feedback inmediato de la página
-  const pendientes   = pedidos.filter(p => p.estado === 'pendiente').length;
-  const enRuta       = pedidos.filter(p => p.estado === 'en_camino').length;
-  const entregados   = pedidos.filter(p => p.estado === 'entregado').length;
+  const pendientes = pedidosFiltrados.filter(p => p.estado === 'pendiente').length;
+  const enRuta     = pedidosFiltrados.filter(p => p.estado === 'en_camino').length;
+  const entregados = pedidosFiltrados.filter(p => p.estado === 'entregado').length;
 
   return (
     <div style={{ paddingBottom:40 }}>
@@ -391,7 +494,51 @@ export default function MisPedidos() {
         </div>
       </div>
 
-      <div style={{ padding:'0 16px', display:'flex', flexDirection:'column', gap:20 }}>
+      <div style={{ padding:'80px 16px 0', display:'flex', flexDirection:'column', gap:20 }}>
+
+        {/* ── BUSCADOR RÁPIDO ── */}
+        <div style={{
+          display:'flex', alignItems:'center', gap:12,
+          background:'white', borderRadius:24, padding:'12px 18px',
+          boxShadow:'0 8px 28px rgba(0,0,0,0.12)', border:'2px solid #e2e8f0',
+          transition:'border-color .2s', position:'relative', zIndex:10,
+        }}
+          onFocusCapture={e => e.currentTarget.style.borderColor = '#0F6E56'}
+          onBlurCapture={e => e.currentTarget.style.borderColor = '#e2e8f0'}
+        >
+          <span style={{ fontSize:18, flexShrink:0 }}>🔍</span>
+          <input
+            ref={searchRef}
+            type="text"
+            placeholder="Buscar por #pedido, cliente, localidad..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            style={{
+              flex:1, border:'none', outline:'none', fontSize:15, fontWeight:500,
+              color:'#084032', background:'transparent', minWidth:0,
+            }}
+          />
+          {busqueda && (
+            <button
+              onClick={() => { setBusqueda(''); searchRef.current?.focus(); }}
+              style={{
+                flexShrink:0, width:28, height:28, borderRadius:'50%', border:'none',
+                background:'#f1f5f9', color:'#64748b', cursor:'pointer',
+                display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:800,
+              }}
+            >×</button>
+          )}
+          {busqueda && (
+            <span style={{
+              flexShrink:0, fontSize:12, fontWeight:800,
+              color: pedidosFiltrados.length > 0 ? '#0F6E56' : '#ef4444',
+              background: pedidosFiltrados.length > 0 ? 'rgba(15,110,86,0.1)' : 'rgba(239,68,68,0.1)',
+              padding:'3px 10px', borderRadius:20,
+            }}>
+              {pedidosFiltrados.length} resultado{pedidosFiltrados.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
 
         {/* ── SEGUNDA BARRA (FILTROS DE LOS SELECTS) ── */}
         <div style={{ display:'grid', gridTemplateColumns: isAdmin ? '1fr 1fr' : '1fr', gap:12, position: 'relative', zIndex: 10 }}>
@@ -453,15 +600,27 @@ export default function MisPedidos() {
         {/* LISTA DE PEDIDOS */}
         {loading ? (
              <div style={{textAlign:'center', padding:'40px 0', color:'#94a3b8', fontWeight:600}}>Cargando pedidos...</div>
-        ) : pedidos.length === 0 ? (
+        ) : pedidosFiltrados.length === 0 ? (
           <div style={{ textAlign:'center', padding:'60px 20px', background:'white', borderRadius:32, boxShadow:'0 10px 30px rgba(0,0,0,0.03)' }}>
-            <span style={{ fontSize:64, display:'block', marginBottom:16 }}>📭</span>
-            <h3 style={{ fontSize:20, color:'#084032', margin:'0 0 8px' }}>Ningún pedido coincide</h3>
-            <p style={{ color:'#6b7280', fontSize:15, margin:0 }}>Prueba ajustando los filtros de cliente o estado.</p>
+            <span style={{ fontSize:64, display:'block', marginBottom:16 }}>{busqueda ? '🔍' : '📭'}</span>
+            <h3 style={{ fontSize:20, color:'#084032', margin:'0 0 8px' }}>
+              {busqueda ? `Sin resultados para "${busqueda}"` : 'Ningún pedido coincide'}
+            </h3>
+            <p style={{ color:'#6b7280', fontSize:15, margin:0 }}>
+              {busqueda
+                ? 'Intenta con el # de pedido, nombre del cliente o localidad.'
+                : 'Prueba ajustando los filtros de cliente o estado.'}
+            </p>
+            {busqueda && (
+              <button
+                onClick={() => setBusqueda('')}
+                style={{ marginTop:16, padding:'10px 24px', borderRadius:16, border:'none', background:'#0F6E56', color:'white', fontSize:14, fontWeight:700, cursor:'pointer' }}
+              >Limpiar búsqueda</button>
+            )}
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-            {pedidos.map((pedido) => {
+            {pedidosFiltrados.map((pedido) => {
               const cfg    = ESTADO[pedido.estado] || ESTADO.pendiente;
               const isOpen = expanded === pedido.id;
               const items  = pedido.order_items || [];
@@ -751,6 +910,19 @@ export default function MisPedidos() {
           accion={modalData.accion} pedido={modalData.pedido} adminId={user?.id}
           onConfirm={(opts) => ejecutarAccion(modalData.pedido, modalData.accion, opts)}
           onCancel={() => setModalData(null)}
+        />
+      )}
+
+      {/* Modal Detalle Directo */}
+      {pedidoDetalle && (
+        <ModalDetalle
+          pedido={pedidoDetalle} 
+          historial={historial} 
+          isAdmin={isAdmin}
+          onCancel={() => setPedidoDetalle(null)}
+          accs={isAdmin ? (ACCIONES_ADMIN[pedidoDetalle.estado] || []) : []}
+          onAccion={(p, a) => { setPedidoDetalle(null); setModalData({pedido:p, accion:a}); }}
+          onCancelar={(p) => { setPedidoDetalle(null); setModalCancelar(p); }}
         />
       )}
 

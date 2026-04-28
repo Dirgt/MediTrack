@@ -1,6 +1,7 @@
 'use client';
 
 import { UserProvider } from '@/context/UserContext';
+import { useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import SessionGuard from '@/components/SessionGuard';
 import { usePathname } from 'next/navigation';
@@ -9,6 +10,16 @@ import NotificationListener from '@/components/NotificationListener';
 
 function InnerWrapper({ children }) {
   const pathname = usePathname();
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => console.log('SW registered'))
+        .catch((err) => console.log('SW error', err));
+    }
+  }, []);
+
   const isLogin = pathname === '/login';
   // Páginas que necesitan salir de borde a borde (sin padding lateral del wrapper)
   const isFullWidth = pathname.startsWith('/admin/');

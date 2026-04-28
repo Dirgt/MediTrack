@@ -385,6 +385,36 @@ export default function Navigation() {
           </span>
         </Link>
 
+        {/* 4.5. Calendario */}
+        <Link
+          href="/calendario"
+          style={{
+            textDecoration: 'none',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 4, padding: '4px 10px', borderRadius: 12,
+            background: pathname === '/calendario' ? 'rgba(15,110,86,0.08)' : 'transparent',
+            transition: 'background 0.15s',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span style={{
+            fontSize: 22,
+            filter: pathname === '/calendario' ? 'none' : 'grayscale(100%) opacity(45%)',
+            transition: 'filter 0.2s',
+            lineHeight: 1,
+            display: 'block'
+          }}>
+            📅
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: pathname === '/calendario' ? 700 : 500,
+            color: pathname === '/calendario' ? 'var(--brand)' : '#9ca3af',
+            lineHeight: 1, marginTop: 4
+          }}>
+            Calendario
+          </span>
+        </Link>
+
         {/* 5. Notificación */}
         <button
           onClick={openNotifDrawer}
