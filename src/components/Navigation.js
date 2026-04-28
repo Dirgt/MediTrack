@@ -259,7 +259,7 @@ export default function Navigation() {
         </>
       )}
 
-      <nav style={{
+      <nav className="bottom-nav" style={{
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
         background: 'rgba(255, 255, 255, 0.92)',
@@ -267,20 +267,21 @@ export default function Navigation() {
         WebkitBackdropFilter: 'blur(16px)',
         borderTop: '1px solid rgba(0,0,0,0.06)',
         display: 'flex',
-        justifyContent: 'space-around',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
         alignItems: 'center',
-        padding: '10px 0 max(16px, env(safe-area-inset-bottom))',
+        padding: '10px 16px max(16px, env(safe-area-inset-bottom))',
         zIndex: 900,
         boxShadow: '0 -2px 20px rgba(0,0,0,0.06)',
-        maxWidth: 600,
-        margin: '0 auto',
+        scrollbarWidth: 'none', /* Firefox */
+        msOverflowStyle: 'none', /* IE and Edge */
       }}>
 
         {/* 1. Mi Cuenta */}
         <button
           onClick={() => setShowProfile(true)}
           style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
             gap: 4, background: 'none', border: 'none', cursor: 'pointer',
             padding: '4px 10px', borderRadius: 12,
             transition: 'background 0.15s',
@@ -299,7 +300,7 @@ export default function Navigation() {
             href="/admin/dashboard"
             style={{
               textDecoration: 'none',
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
               gap: 4, padding: '4px 10px', borderRadius: 12,
               background: pathname === '/admin/dashboard' ? 'rgba(15,110,86,0.08)' : 'transparent',
               transition: 'background 0.15s',
@@ -330,7 +331,7 @@ export default function Navigation() {
           href="/"
           style={{
             textDecoration: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
             gap: 4, padding: '4px 10px', borderRadius: 12,
             background: pathname === '/' ? 'rgba(15,110,86,0.08)' : 'transparent',
             transition: 'background 0.15s',
@@ -360,7 +361,7 @@ export default function Navigation() {
           href="/pedidos"
           style={{
             textDecoration: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
             gap: 4, padding: '4px 10px', borderRadius: 12,
             background: pathname === '/pedidos' ? 'rgba(15,110,86,0.08)' : 'transparent',
             transition: 'background 0.15s',
@@ -390,7 +391,7 @@ export default function Navigation() {
           href="/calendario"
           style={{
             textDecoration: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
             gap: 4, padding: '4px 10px', borderRadius: 12,
             background: pathname === '/calendario' ? 'rgba(15,110,86,0.08)' : 'transparent',
             transition: 'background 0.15s',
@@ -419,7 +420,7 @@ export default function Navigation() {
         <button
           onClick={openNotifDrawer}
           style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
             gap: 4, background: showNotifDrawer ? 'rgba(15,110,86,0.08)' : 'none',
             border: 'none', cursor: 'pointer',
             padding: '4px 10px', borderRadius: 12,
@@ -466,7 +467,7 @@ export default function Navigation() {
             href="/admin/configuracion"
             style={{
               textDecoration: 'none',
-              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
               gap: 4, padding: '4px 10px', borderRadius: 12,
               background: pathname === '/admin/configuracion' ? 'rgba(15,110,86,0.08)' : 'transparent',
               transition: 'background 0.15s',
@@ -497,6 +498,18 @@ export default function Navigation() {
       {showProfile && <ProfileSheet onClose={() => setShowProfile(false)} />}
 
       <style>{`
+        .bottom-nav {
+          max-width: 600px;
+          margin: 0 auto;
+          justify-content: space-around;
+        }
+        @media (max-width: 480px) {
+          .bottom-nav {
+            justify-content: flex-start;
+            gap: 12px;
+          }
+        }
+        .bottom-nav::-webkit-scrollbar { display: none; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
         @keyframes pulse   { 0%,100% { transform: scale(1) } 50% { transform: scale(1.15) } }

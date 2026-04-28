@@ -22,7 +22,7 @@ function InnerWrapper({ children }) {
 
   const isLogin = pathname === '/login';
   // Páginas que necesitan salir de borde a borde (sin padding lateral del wrapper)
-  const isFullWidth = pathname.startsWith('/admin/');
+  const isFullWidth = pathname.startsWith('/admin/') || pathname.startsWith('/pedidos');
 
   return (
     <SessionGuard>
@@ -31,8 +31,8 @@ function InnerWrapper({ children }) {
           isLogin
             ? { minHeight: '100dvh' }
             : isFullWidth
-              ? { maxWidth: '680px', marginLeft: 'auto', marginRight: 'auto', paddingBottom: '90px' }
-              : { maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', paddingTop: '20px', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '90px' }
+              ? { maxWidth: '1200px', marginLeft: 'auto', marginRight: 'auto', paddingBottom: '90px' }
+              : { maxWidth: '1200px', marginLeft: 'auto', marginRight: 'auto', paddingTop: '20px', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '90px' }
         }>
           {children}
         </main>

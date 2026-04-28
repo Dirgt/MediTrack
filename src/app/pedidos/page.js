@@ -476,13 +476,12 @@ export default function MisPedidos() {
             </h1>
           </div>
 
-          {/* Stats rápidas */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:10 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))', gap:10 }}>
             {[
               { label:'Total Búsqueda', value: totalRegistros, icon:'📦' },
-              { label:'Pendiente', value: pendientes, icon:'⏳' },
-              { label:'En Ruta',   value: enRuta,    icon:'🚚' },
-              { label:'Entregado', value: entregados, icon:'✅' },
+              { label:'Pendientes', value: pendientes, icon:'⏳' },
+              { label:'En Camino',   value: enRuta,    icon:'🚚' },
+              { label:'Entregados', value: entregados, icon:'✅' },
             ].map(s => (
               <div key={s.label} style={{ background:'rgba(255,255,255,0.22)', borderRadius:20, padding:'14px 8px', textAlign:'center', backdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.2)' }}>
                 <div style={{ fontSize:20, marginBottom:2 }}>{s.icon}</div>
@@ -541,7 +540,7 @@ export default function MisPedidos() {
         </div>
 
         {/* ── SEGUNDA BARRA (FILTROS DE LOS SELECTS) ── */}
-        <div style={{ display:'grid', gridTemplateColumns: isAdmin ? '1fr 1fr' : '1fr', gap:12, position: 'relative', zIndex: 10 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isAdmin ? 'repeat(auto-fit, minmax(140px, 1fr))' : '1fr', gap:12, position: 'relative', zIndex: 10 }}>
           {/* Cliente Select */}
           <div className="custom-select-wrapper" style={{ background:'white', padding:4, borderRadius:20, boxShadow:'0 8px 24px rgba(0,0,0,0.08)' }}>
             <select
@@ -568,7 +567,7 @@ export default function MisPedidos() {
         </div>
 
         {/* Fecha Rango Select */}
-        <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4 }}>
+        <div className="hide-scrollbar" style={{ display:'flex', gap:8, overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:4 }}>
           {[ {id:'todos', l:'Siempre'}, {id:'hoy', l:'Hoy'}, {id:'semana', l:'Esta Semana'}, {id:'mes', l:'Este Mes'} ].map(r => (
             <button key={r.id} onClick={()=>{ setFiltroRango(r.id); setPagina(1); }} style={{
               flexShrink:0, padding:'10px 16px', borderRadius:16, border:'none', cursor:'pointer', fontSize:14, fontWeight:700,
@@ -579,7 +578,7 @@ export default function MisPedidos() {
         </div>
 
         {/* Chips de Estados Generales */}
-        <div style={{ display:'flex', gap:10, overflowX:'auto', paddingBottom:8, marginTop:-4 }}>
+        <div className="hide-scrollbar" style={{ display:'flex', gap:10, overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:8, marginTop:-4 }}>
           {FILTROS_ESTADO.map(f => {
              const isSel = filtroEstado === f.id;
              return (
@@ -596,6 +595,11 @@ export default function MisPedidos() {
              );
           })}
         </div>
+
+        <style>{`
+          .hide-scrollbar::-webkit-scrollbar { display: none; }
+          .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        `}</style>
 
         {/* LISTA DE PEDIDOS */}
         {loading ? (
@@ -619,7 +623,7 @@ export default function MisPedidos() {
             )}
           </div>
         ) : (
-          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap:16, alignItems: 'start' }}>
             {pedidosFiltrados.map((pedido) => {
               const cfg    = ESTADO[pedido.estado] || ESTADO.pendiente;
               const isOpen = expanded === pedido.id;
