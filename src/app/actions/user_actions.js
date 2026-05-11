@@ -25,6 +25,15 @@ export async function createStaffAccount(data) {
   try {
     const supabaseAdmin = getAdminSupabaseClient();
     const { email, password, full_name, role_type } = data;
+    
+    // Validación de robustez de contraseña (#15)
+    const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!strongPasswordRegex.test(password)) {
+      return { 
+        success: false, 
+        error: 'La contraseña debe tener al menos 8 caracteres, una letra mayúscula y un número.' 
+      };
+    }
 
     // 1. Crear el usuario en la tabla interna de Supabase Auth
     // Gracias al Trigger insertado, `email_confirmed_at` se marcará automáticamente

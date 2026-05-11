@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 
@@ -14,7 +14,8 @@ export default function CrearPedido() {
   const [showClienteDrop, setShowClienteDrop] = useState(false);
   const [loadingClientes, setLoadingClientes] = useState(true);
   const [showNewCliente, setShowNewCliente] = useState(false);
-  const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', telefono: '', ciudad: '' });
+  const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', telefono: '', localidad: '' });
+  const deferredSearch = useDeferredValue(clienteSearch);
 
   // ── Pedido ──
   const [fechaEntrega, setFechaEntrega] = useState('');
@@ -26,8 +27,22 @@ export default function CrearPedido() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
+  const [isOffline, setIsOffline] = useState(typeof window !== 'undefined' ? !window.navigator.onLine : false);
 
   const clienteRef = useRef(null);
+  const lastSubmitRef = useRef(0);
+
+  // ── Monitoreo Offline ──
+  useEffect(() => {
+    const handleOnline  = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   /* ── Cargar clientes filtrados por vendedor (admin ve todos) ── */
   useEffect(() => {
@@ -52,6 +67,36 @@ export default function CrearPedido() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  /* ── #1: Guard de navegación — advertir antes de perder el formulario ── */
+  const formHasData = useMemo(() => {
+    return clienteId || observaciones.trim() || items.some(it => it.medicamento_nombre.trim());
+  }, [clienteId, observaciones, items]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (formHasData && !success) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requiere esto
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [formHasData, success]);
+
+  /* ── #2: Detección de conexión offline ── */
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    // Revisar estado inicial
+    if (typeof navigator !== 'undefined' && !navigator.onLine) setIsOffline(true);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
+
   /* ── Items ── */
   const addItem = () => setItems(p => [...p, { medicamento_nombre: '', cantidad: 1 }]);
   const removeItem = (i) => items.length > 1 && setItems(p => p.filter((_, idx) => idx !== i));
@@ -60,19 +105,21 @@ export default function CrearPedido() {
 
   /* ── Crear cliente nuevo ── */
   const handleCrearCliente = async () => {
-    if (!nuevoCliente.nombre.trim()) return;
+    if (!nuevoCliente.nombre.trim()) { setError('El nombre es obligatorio'); return; }
+    if (!nuevoCliente.localidad) { setError('La localidad es obligatoria'); return; }
+
     const { data, error: e } = await supabase.from('clientes').insert({
       vendedor_id: user.id,
       nombre: nuevoCliente.nombre.trim(),
       telefono: nuevoCliente.telefono || null,
-      ciudad: nuevoCliente.ciudad || null,
+      ciudad: nuevoCliente.localidad || null, // Guardamos en 'ciudad' de la tabla clientes pero le llamamos localidad en UI
     }).select().single();
     if (data) {
       setClientes(p => [...p, data].sort((a, b) => a.nombre.localeCompare(b.nombre)));
       setClienteId(data.id);
       setClienteSearch(data.nombre);
       setShowNewCliente(false);
-      setNuevoCliente({ nombre: '', telefono: '', ciudad: '' });
+      setNuevoCliente({ nombre: '', telefono: '', localidad: '' });
     } else {
       setError(e?.message);
     }
@@ -81,6 +128,21 @@ export default function CrearPedido() {
   /* ── Submit ── */
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // #1: Anti-duplicado — bloquear si ya se envió hace menos de 10 segundos
+    if (isSubmitting) return;
+    const now = Date.now();
+    if (now - lastSubmitRef.current < 10000) {
+      setError('Espera unos segundos antes de enviar otro pedido.');
+      return;
+    }
+
+    // #2: Bloquear si está offline
+    if (isOffline) {
+      setError('No hay conexión a internet. Verifica tu conexión e intenta de nuevo.');
+      return;
+    }
+
     if (!user || !clienteId) { setError('Selecciona un cliente para continuar.'); return; }
     if (!fechaEntrega) { setError('Selecciona la fecha de entrega (es obligatoria).'); return; }
     if (!tipoFactura) { setError('Selecciona el tipo de factura (es obligatorio).'); return; }
@@ -130,6 +192,7 @@ export default function CrearPedido() {
       console.error("Error generating local feedback:", err);
     }
 
+    lastSubmitRef.current = Date.now(); // #3: marcar timestamp de envío exitoso
     setSuccess(true);
     setClienteId('');
     setClienteSearch('');
@@ -142,9 +205,11 @@ export default function CrearPedido() {
     setTimeout(() => setSuccess(false), 5000);
   };
 
-  const clientesFiltrados = clientes.filter(c =>
-    c.nombre.toLowerCase().includes(clienteSearch.toLowerCase())
-  );
+  const clientesFiltrados = useMemo(() => {
+    return clientes.filter(c =>
+      c.nombre.toLowerCase().includes(deferredSearch.toLowerCase())
+    );
+  }, [clientes, deferredSearch]);
   const clienteSeleccionado = clientes.find(c => c.id === clienteId);
   const totalItems = items.reduce((acc, it) => acc + (parseInt(it.cantidad) || 0), 0);
 
@@ -172,6 +237,26 @@ export default function CrearPedido() {
 
       {/* ══ CARDS ══ */}
       <div style={{ paddingLeft: 16, paddingRight: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* #2: Banner Offline */}
+        {isOffline && (
+          <div style={{
+            background: 'linear-gradient(90deg, #f59e0b, #d97706)',
+            borderRadius: 18,
+            padding: '14px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            animation: 'slideDown .35s cubic-bezier(.34,1.2,.64,1)',
+            boxShadow: '0 8px 20px rgba(217,119,6,0.25)'
+          }}>
+            <span style={{ fontSize: 22 }}>⚠️</span>
+            <div>
+              <p style={{ fontWeight: 800, color: 'white', margin: 0, fontSize: 14 }}>Sin conexión a internet</p>
+              <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, margin: '2px 0 0' }}>No podrás enviar pedidos hasta que se restablezca.</p>
+            </div>
+          </div>
+        )}
 
         {/* Success */}
         {success && (
@@ -338,13 +423,13 @@ export default function CrearPedido() {
                         <label className="form-label-premium">Localidad</label>
                         <div style={{ position: 'relative' }}>
                           <select 
-                            value={nuevoCliente.ciudad} 
-                            onChange={e => setNuevoCliente(p => ({ ...p, ciudad: e.target.value }))}
+                            value={nuevoCliente.localidad} 
+                            onChange={e => setNuevoCliente(p => ({ ...p, localidad: e.target.value }))}
                             className="form-input-premium"
-                            style={{ appearance: 'none', cursor: 'pointer' }}
+                            style={{ appearance: 'none', cursor: 'pointer', border: !nuevoCliente.localidad && nuevoCliente.nombre ? '1px solid #ef4444' : '2px solid rgba(0,0,0,0.1)' }}
                           >
                             <option value="">📍 Seleccionar</option>
-                            {['Engativá', 'Kennedy', 'Bosa', 'Soacha'].map(loc => (
+                            {['Engativá', 'Kennedy', 'Bosa', 'Soacha', 'Fontibón', 'Suba', 'Usaquén', 'Chapinero', 'Barrios Unidos', 'Teusaquillo', 'Los Mártires', 'Santa Fe', 'Candelaria', 'San Cristóbal', 'Rafael Uribe', 'Tunjuelito', 'Usme', 'Ciudad Bolívar', 'Antonio Nariño', 'Puente Aranda'].map(loc => (
                               <option key={loc} value={loc}>{loc}</option>
                             ))}
                           </select>

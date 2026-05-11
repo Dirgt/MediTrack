@@ -9,6 +9,9 @@ function getAdminClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+// ── Máximo de intentos de entrega permitidos ──
+const MAX_INTENTOS = 2;
+
 // ── Transiciones válidas ──
 const TRANSICIONES_VALIDAS = {
   pendiente:            ['alistando', 'cancelado'],
@@ -67,7 +70,25 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
 
     if (nuevoEstado === 'rechazado_puerta') {
       update.motivo_rechazo   = opciones.motivo_rechazo || null;
-      update.intentos_entrega = (order.intentos_entrega || 0) + 1;
+      const nuevosIntentos = (order.intentos_entrega || 0) + 1;
+      update.intentos_entrega = nuevosIntentos;
+
+      // #5: Si se alcanza el límite de intentos, cerrar automáticamente
+      if (nuevosIntentos >= MAX_INTENTOS) {
+        update.estado = 'cerrado_sin_entrega';
+        update.motivo_rechazo = `${opciones.motivo_rechazo || 'Sin motivo'} (Cierre automático — ${MAX_INTENTOS} intentos alcanzados)`;
+        // Registrar en historial el cierre automático
+        await supabase.from('order_history').insert({
+          order_id:        orderId,
+          estado_anterior: 'rechazado_puerta',
+          estado_nuevo:    'cerrado_sin_entrega',
+          nota_interna:    `Cierre automático tras ${MAX_INTENTOS} intentos de entrega fallidos.`,
+          cambiado_por:    opciones.adminId || null,
+        });
+        const { error: closeErr } = await supabase.from('orders').update(update).eq('id', orderId);
+        if (closeErr) return { success: false, error: closeErr.message };
+        return { success: true, autoClosed: true, mensaje: `Pedido cerrado automáticamente tras ${MAX_INTENTOS} intentos fallidos.` };
+      }
     }
     if (nuevoEstado === 'programado_reintento') {
       update.nota_reintento  = opciones.nota_reintento || null;
@@ -124,6 +145,9 @@ export async function editarPedido(orderId, { items, observaciones, vendedorId }
     const itemsValidos = (items || []).filter(i => i.medicamento_nombre?.trim());
     if (itemsValidos.length === 0) return { success: false, error: 'Debes incluir al menos un medicamento' };
 
+    // 0. Obtener items actuales para auditoría (#14)
+    const { data: oldItems } = await supabase.from('order_items').select('medicamento_nombre, cantidad').eq('order_id', orderId);
+
     // 1. Actualizar el pedido
     const { error: updateErr } = await supabase
       .from('orders')
@@ -143,6 +167,37 @@ export async function editarPedido(orderId, { items, observaciones, vendedorId }
 
     const { error: itemsErr } = await supabase.from('order_items').insert(nuevosItems);
     if (itemsErr) return { success: false, error: itemsErr.message };
+
+    // 3. Registrar auditoría de cambios en items
+    if (oldItems) {
+      const auditParts = [];
+      
+      // Encontrar eliminados o cambiados
+      oldItems.forEach(oi => {
+        const matching = nuevosItems.find(ni => ni.medicamento_nombre === oi.medicamento_nombre);
+        if (!matching) {
+          auditParts.push(`Quita: ${oi.medicamento_nombre} (x${oi.cantidad})`);
+        } else if (matching.cantidad !== oi.cantidad) {
+          auditParts.push(`Cambia: ${oi.medicamento_nombre} (${oi.cantidad} → ${matching.cantidad})`);
+        }
+      });
+
+      // Encontrar nuevos
+      nuevosItems.forEach(ni => {
+        const isNew = !oldItems.some(oi => oi.medicamento_nombre === ni.medicamento_nombre);
+        if (isNew) auditParts.push(`Añade: ${ni.medicamento_nombre} (x${ni.cantidad})`);
+      });
+
+      if (auditParts.length > 0 || order.observaciones !== observaciones) {
+        await supabase.from('order_history').insert({
+          order_id: orderId,
+          estado_anterior: 'pendiente',
+          estado_nuevo: 'pendiente',
+          nota_interna: auditParts.length > 0 ? `Edición de ítems: ${auditParts.join(', ')}` : 'Edición de observaciones',
+          cambiado_por: vendedorId
+        });
+      }
+    }
 
     return { success: true };
   } catch (e) {

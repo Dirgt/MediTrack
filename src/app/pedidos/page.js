@@ -253,6 +253,8 @@ export default function MisPedidos() {
   
   const [filtroEstado, setFiltro]     = useState('todos');
   const [filtroRango, setFiltroRango] = useState('todos');
+  const [fechaDesde, setFechaDesde]   = useState('');
+  const [fechaHasta, setFechaHasta]   = useState('');
   const [filtroVendedor, setFiltroVendedor] = useState('todos');
   const [filtroCliente, setFiltroCliente]   = useState('todos'); // NUEVO: Select de Cliente
   
@@ -322,9 +324,18 @@ export default function MisPedidos() {
       q = q.eq('cliente_nombre', filtroCliente);
     }
 
-    const rango = getRangoFecha(filtroRango);
-    if (rango) {
-      q = q.gte('creado_en', rango.desde.toISOString());
+    // Filtros de fecha
+    if (filtroRango === 'personalizado') {
+      if (fechaDesde) q = q.gte('creado_en', new Date(fechaDesde).toISOString());
+      if (fechaHasta) {
+        // Incluir el día completo de hasta
+        const hasta = new Date(fechaHasta);
+        hasta.setDate(hasta.getDate() + 1);
+        q = q.lt('creado_en', hasta.toISOString());
+      }
+    } else {
+      const rango = getRangoFecha(filtroRango);
+      if (rango) q = q.gte('creado_en', rango.desde.toISOString());
     }
 
     // Paginación
@@ -338,7 +349,7 @@ export default function MisPedidos() {
       setTotalRegistros(count || 0);
     }
     setLoading(false);
-  }, [user, isAdmin, filtroEstado, filtroRango, filtroVendedor, filtroCliente, pagina, porPagina]);
+  }, [user, isAdmin, filtroEstado, filtroRango, filtroVendedor, filtroCliente, pagina, porPagina, fechaDesde, fechaHasta]);
 
   // NUEVO: Manejar apertura directa desde URL (ej. desde el Calendario)
   useEffect(() => {
@@ -567,8 +578,8 @@ export default function MisPedidos() {
         </div>
 
         {/* Fecha Rango Select */}
-        <div className="hide-scrollbar" style={{ display:'flex', gap:8, overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:4 }}>
-          {[ {id:'todos', l:'Siempre'}, {id:'hoy', l:'Hoy'}, {id:'semana', l:'Esta Semana'}, {id:'mes', l:'Este Mes'} ].map(r => (
+        <div className="hide-scrollbar" style={{ display:'flex', gap:8, overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:4, flexWrap:'wrap' }}>
+          {[ {id:'todos', l:'Siempre'}, {id:'hoy', l:'Hoy'}, {id:'semana', l:'Esta Semana'}, {id:'mes', l:'Este Mes'}, {id:'personalizado', l:'📅 Personalizado'} ].map(r => (
             <button key={r.id} onClick={()=>{ setFiltroRango(r.id); setPagina(1); }} style={{
               flexShrink:0, padding:'10px 16px', borderRadius:16, border:'none', cursor:'pointer', fontSize:14, fontWeight:700,
               background: filtroRango === r.id ? '#084032' : '#f1f5f9',
@@ -576,6 +587,30 @@ export default function MisPedidos() {
             }}>{r.l}</button>
           ))}
         </div>
+
+        {/* #6: Inputs de rango personalizado */}
+        {filtroRango === 'personalizado' && (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, animation:'slideDown .25s ease' }}>
+            <div style={{ background:'white', borderRadius:16, padding:'10px 14px', boxShadow:'0 4px 12px rgba(0,0,0,0.06)' }}>
+              <label style={{ display:'block', fontSize:11, fontWeight:800, color:'#64748b', marginBottom:4, textTransform:'uppercase', letterSpacing:0.5 }}>Desde</label>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={e => { setFechaDesde(e.target.value); setPagina(1); }}
+                style={{ width:'100%', border:'none', outline:'none', fontSize:14, fontWeight:600, color:'#084032', background:'transparent' }}
+              />
+            </div>
+            <div style={{ background:'white', borderRadius:16, padding:'10px 14px', boxShadow:'0 4px 12px rgba(0,0,0,0.06)' }}>
+              <label style={{ display:'block', fontSize:11, fontWeight:800, color:'#64748b', marginBottom:4, textTransform:'uppercase', letterSpacing:0.5 }}>Hasta</label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={e => { setFechaHasta(e.target.value); setPagina(1); }}
+                style={{ width:'100%', border:'none', outline:'none', fontSize:14, fontWeight:600, color:'#084032', background:'transparent' }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Chips de Estados Generales */}
         <div className="hide-scrollbar" style={{ display:'flex', gap:10, overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:8, marginTop:-4 }}>
@@ -682,10 +717,22 @@ export default function MisPedidos() {
                         </div>
                       </div>
                       
-                      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end' }}>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap: 6 }}>
                          <span style={{ background: cfg.bg, color: cfg.color, fontWeight:800, fontSize:12, padding:'6px 12px', borderRadius:12, display:'flex', alignItems:'center', gap:6 }}>
                            {cfg.emoji} {cfg.label}
                          </span>
+                         {/* #5: Badge de intentos de entrega */}
+                         {(pedido.intentos_entrega > 0) && (
+                           <span style={{
+                             background: pedido.intentos_entrega >= 2 ? 'rgba(220,38,38,0.12)' : 'rgba(249,115,22,0.12)',
+                             color: pedido.intentos_entrega >= 2 ? '#dc2626' : '#ea580c',
+                             fontWeight: 800, fontSize: 11,
+                             padding: '3px 8px', borderRadius: 8,
+                             display: 'flex', alignItems: 'center', gap: 4
+                           }}>
+                             🔄 {pedido.intentos_entrega}/2 intentos
+                           </span>
+                         )}
                       </div>
                     </div>
                   </div>

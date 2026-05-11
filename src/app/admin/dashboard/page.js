@@ -39,17 +39,34 @@ export default function DashboardAdmin() {
     tendencia: [],
     maxTrend: 0,
     criticos: 0,
-    porLocalidad: {}
+    porLocalidad: {},
+    topMedicamentos: [],
   });
 
   const fetchStats = useCallback(async () => {
-    const [{ data: pedidos }, { count: totalClientes }] = await Promise.all([
+    const [{ data: pedidos }, { count: totalClientes }, { data: items }] = await Promise.all([
       supabase.from('orders').select('id, estado, creado_en, cliente_nombre, vendedor_id, localidad, profiles!orders_vendedor_id_fkey(nombre_completo)').order('creado_en', { ascending: false }),
-      supabase.from('clientes').select('*', { count: 'exact', head: true })
+      supabase.from('clientes').select('*', { count: 'exact', head: true }),
+      supabase.from('order_items').select('medicamento_nombre, cantidad'),
     ]);
 
     if (pedidos) setAllPedidos(pedidos);
     if (totalClientes) setClientesCount(totalClientes);
+
+    // Calcular top medicamentos
+    if (items) {
+      const medMap = {};
+      items.forEach(it => {
+        const key = it.medicamento_nombre?.trim();
+        if (key) medMap[key] = (medMap[key] || 0) + (parseInt(it.cantidad) || 1);
+      });
+      const topMeds = Object.entries(medMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([nombre, total]) => ({ nombre, total }));
+      setStats(prev => ({ ...prev, topMedicamentos: topMeds }));
+    }
+
     setLoading(false);
   }, []);
 
@@ -137,9 +154,10 @@ export default function DashboardAdmin() {
       tendencia.push({ dia: d.toLocaleDateString('es-CO', { weekday:'short' }).replace('.',''), count });
     }
 
-    setStats({
+    setStats(prev => ({
+      ...prev,
       totalPedidos, filteredCount, pedidosHoy, tasaEntrega, porEstado, topVendedores, pedidosRecientes, tendencia, maxTrend, criticos, porLocalidad
-    });
+    }));
 
   }, [allPedidos, timeFilter, statusFilter]);
 
@@ -405,6 +423,39 @@ export default function DashboardAdmin() {
                 })}
               </div>
             </div>
+
+            {/* ── 4b. TOP MEDICAMENTOS ── */}
+            {stats.topMedicamentos?.length > 0 && (
+              <div style={{ background: 'white', borderRadius: 28, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+                <h3 style={{ fontSize: 13, fontWeight: 900, color: '#0F6E56', margin: '0 0 20px', textTransform: 'uppercase', letterSpacing: 1 }}>💊 Top Medicamentos</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {stats.topMedicamentos.map((med, idx) => {
+                    const maxVal = stats.topMedicamentos[0]?.total || 1;
+                    const pct = Math.round((med.total / maxVal) * 100);
+                    return (
+                      <div key={med.nombre}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12, fontWeight: 900, color: idx === 0 ? '#0F6E56' : '#94a3b8' }}>#{idx + 1}</span>
+                            {med.nombre}
+                          </span>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#0F6E56', background: 'rgba(15,110,86,0.1)', padding: '2px 8px', borderRadius: 8 }}>
+                            {med.total} uds
+                          </span>
+                        </div>
+                        <div style={{ height: 6, background: '#f1f5f9', borderRadius: 6, overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${pct}%`, height: '100%',
+                            background: idx === 0 ? 'linear-gradient(90deg, #0F6E56, #10b981)' : '#d1fae5',
+                            borderRadius: 6, transition: 'width 0.5s'
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* ── 5. TOP VENDEDORES (Podio) ── */}
             <div style={{ background: 'white', borderRadius: 28, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>

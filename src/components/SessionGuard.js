@@ -16,7 +16,7 @@ export default function SessionGuard({ children }) {
   const [expired, setExpired] = useState(false);
 
   const handleLogout = useCallback(async () => {
-    sessionStorage.removeItem('meditrack_session_start');
+    localStorage.removeItem('meditrack_session_start');
     await supabase.auth.signOut();
     window.location.href = '/login';
   }, []);
@@ -26,11 +26,11 @@ export default function SessionGuard({ children }) {
     if (pathname === '/login') return;
 
     function checkSession() {
-      const startStr = sessionStorage.getItem('meditrack_session_start');
+      const startStr = localStorage.getItem('meditrack_session_start');
 
       // Si no hay marca de inicio (recarga vieja, sesión legacy), la creamos ahora
       if (!startStr) {
-        sessionStorage.setItem('meditrack_session_start', Date.now().toString());
+        localStorage.setItem('meditrack_session_start', Date.now().toString());
         return;
       }
 
