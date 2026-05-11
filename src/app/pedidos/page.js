@@ -707,10 +707,15 @@ export default function MisPedidos() {
                           <SLAIndicator pedido={pedido} compact />
                         </div>
                         
-                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                            <span style={{ fontSize:13, fontWeight:600, color:'#64748b', background:'#f1f5f9', padding:'4px 10px', borderRadius:10 }}>
                              📦 {items.length} prods ({uds} uds)
                            </span>
+                           {pedido.fecha_entrega && (
+                             <span style={{ fontSize:12, fontWeight:700, color:'#0F6E56', background:'rgba(15,110,86,0.08)', padding:'4px 10px', borderRadius:10 }}>
+                               📅 Entrega: {new Date(pedido.fecha_entrega + 'T00:00:00').toLocaleDateString('es-CO', {month:'short', day:'numeric'})}
+                             </span>
+                           )}
                            <span style={{ fontSize:13, color:'#94a3b8', fontWeight:500 }}>
                              {new Date(pedido.creado_en).toLocaleDateString('es-CO', {month:'short', day:'numeric'})}
                            </span>
