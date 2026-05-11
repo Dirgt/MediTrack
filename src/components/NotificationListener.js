@@ -38,28 +38,20 @@ export default function NotificationListener({ children }) {
 
   const playNotificationSound = useCallback(() => {
     try {
-      if (!audioCtxRef.current) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        if (!AudioContext) return;
-        audioCtxRef.current = new AudioContext();
+      // Usamos un archivo de sonido real que es más audible y profesional
+      const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audio.volume = 0.5;
+      
+      // Intentamos reproducir. Si el navegador bloquea, lanzará un error que capturamos.
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.warn('Reproducción automática bloqueada por el navegador:', error);
+        });
       }
-      const audioCtx = audioCtxRef.current;
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-
-      const oscillator = audioCtx.createOscillator();
-      const gainNode   = audioCtx.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.05);
-      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      oscillator.start(audioCtx.currentTime);
-      oscillator.stop(audioCtx.currentTime + 0.2);
     } catch (e) {
-      console.warn('Audio bloqueado', e);
+      console.warn('Error al intentar reproducir sonido:', e);
     }
   }, []);
 
