@@ -327,7 +327,7 @@ export default function CrearPedido() {
                         value={nuevoCliente.nombre} onChange={e => setNuevoCliente(p => ({ ...p, nombre: e.target.value }))}
                         className="form-input-premium" />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 12 }}>
                       <div>
                         <label className="form-label-premium">Teléfono</label>
                         <input type="text" placeholder="300..."
@@ -393,13 +393,13 @@ export default function CrearPedido() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 16, marginBottom: 16 }}>
                   {/* Tipo de Factura */}
                   <div>
                     <label className="form-label-premium">Tipo de Factura <span style={{ color: '#ef4444' }}>*</span></label>
                     <div style={{ display: 'flex', background: 'white', borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)', padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('remision')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'remision' ? '#0F6E56' : 'transparent', color: tipoFactura === 'remision' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Remisión</button>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('factura_electronica')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'factura_electronica' ? '#0F6E56' : 'transparent', color: tipoFactura === 'factura_electronica' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Electrónica</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('remision')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'remision' ? '#0F6E56' : 'transparent', color: tipoFactura === 'remision' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Remisión</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('factura_electronica')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'factura_electronica' ? '#0F6E56' : 'transparent', color: tipoFactura === 'factura_electronica' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Electrónica</button>
                     </div>
                   </div>
 
@@ -407,8 +407,8 @@ export default function CrearPedido() {
                   <div>
                     <label className="form-label-premium">Tipo de Pago <span style={{ color: '#ef4444' }}>*</span></label>
                     <div style={{ display: 'flex', background: 'white', borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)', padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('contado')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'contado' ? '#0F6E56' : 'transparent', color: tipoPago === 'contado' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Contado</button>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('credito')} style={{ flex: 1, padding: '10px 0', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'credito' ? '#0F6E56' : 'transparent', color: tipoPago === 'credito' ? 'white' : '#64748b', fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>Crédito</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('contado')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'contado' ? '#0F6E56' : 'transparent', color: tipoPago === 'contado' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Contado</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('credito')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'credito' ? '#0F6E56' : 'transparent', color: tipoPago === 'credito' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Crédito</button>
                     </div>
                   </div>
                 </div>
@@ -418,7 +418,7 @@ export default function CrearPedido() {
                   <label className="form-label-premium">Localidad <span style={{ color: '#ef4444' }}>*</span></label>
                   <div style={{ 
                     display: 'grid', 
-                    gridTemplateColumns: 'repeat(2, 1fr)', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
                     gap: 8, 
                     background: 'rgba(249,250,251,0.5)', 
                     borderRadius: 20, 
@@ -486,40 +486,42 @@ export default function CrearPedido() {
             <div style={{ padding: '8px 12px 12px' }}>
               {items.map((item, idx) => (
                 <div key={idx} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
+                  display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
                   padding: '10px', borderRadius: 14,
                   background: idx % 2 === 0 ? 'rgba(15,110,86,0.03)' : 'transparent',
                   marginBottom: idx < items.length - 1 ? 4 : 0,
                 }}>
-                  {/* Número */}
-                  <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--brand), #1a9b78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'white' }}>
-                    {idx + 1}
-                  </div>
-                  {/* Input nombre */}
-                  <input
-                    type="text"
-                    value={item.medicamento_nombre}
-                    onChange={e => changeItem(idx, 'medicamento_nombre', e.target.value)}
-                    required
-                    placeholder="Nombre del medicamento..."
-                    style={{ flex: 1, border: 'none', borderBottom: '1.5px solid rgba(0,0,0,0.08)', outline: 'none', fontSize: 14, padding: '4px 0 6px', background: 'transparent', fontFamily: 'inherit', color: 'var(--brand-dark)', fontWeight: item.medicamento_nombre ? 600 : 400 }}
-                  />
-                  {/* Stepper cantidad */}
-                  <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(15,110,86,0.08)', borderRadius: 10, border: '1px solid rgba(15,110,86,0.15)', overflow: 'hidden' }}>
-                    <button type="button" className="btn-dynamic" onClick={() => stepQty(idx, -1)} style={{ width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                  {/* Fila 1: Número + Nombre */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 200px', minWidth: 0 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--brand), #1a9b78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'white' }}>
+                      {idx + 1}
+                    </div>
                     <input
-                      type="number"
-                      value={item.cantidad || ''}
-                      onChange={e => changeItem(idx, 'cantidad', parseInt(e.target.value) || 0)}
-                      onBlur={e => { if (!e.target.value || parseInt(e.target.value) < 1) changeItem(idx, 'cantidad', 1); }}
-                      style={{ width: 36, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--brand-dark)', border: 'none', background: 'transparent', outline: 'none', MozAppearance: 'textfield' }}
+                      type="text"
+                      value={item.medicamento_nombre}
+                      onChange={e => changeItem(idx, 'medicamento_nombre', e.target.value)}
+                      required
+                      placeholder="Nombre del medicamento..."
+                      style={{ flex: 1, minWidth: 0, border: 'none', borderBottom: '1.5px solid rgba(0,0,0,0.08)', outline: 'none', fontSize: 14, padding: '4px 0 6px', background: 'transparent', fontFamily: 'inherit', color: 'var(--brand-dark)', fontWeight: item.medicamento_nombre ? 600 : 400 }}
                     />
-                    <button type="button" className="btn-dynamic" onClick={() => stepQty(idx, +1)} style={{ width: 28, height: 28, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>＋</button>
                   </div>
-                  {/* Eliminar */}
-                  {items.length > 1 && (
-                    <button type="button" className="btn-dynamic" onClick={() => removeItem(idx)} style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>✕</button>
-                  )}
+                  {/* Fila 2 (wraps on mobile): Stepper + Eliminar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(15,110,86,0.08)', borderRadius: 10, border: '1px solid rgba(15,110,86,0.15)', overflow: 'hidden', flexShrink: 0 }}>
+                      <button type="button" className="btn-dynamic" onClick={() => stepQty(idx, -1)} style={{ width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                      <input
+                        type="number"
+                        value={item.cantidad || ''}
+                        onChange={e => changeItem(idx, 'cantidad', parseInt(e.target.value) || 0)}
+                        onBlur={e => { if (!e.target.value || parseInt(e.target.value) < 1) changeItem(idx, 'cantidad', 1); }}
+                        style={{ width: 38, textAlign: 'center', fontWeight: 800, fontSize: 14, color: 'var(--brand-dark)', border: 'none', background: 'transparent', outline: 'none', MozAppearance: 'textfield' }}
+                      />
+                      <button type="button" className="btn-dynamic" onClick={() => stepQty(idx, +1)} style={{ width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--brand)', fontSize: 16, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>＋</button>
+                    </div>
+                    {items.length > 1 && (
+                      <button type="button" className="btn-dynamic" onClick={() => removeItem(idx)} style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, border: 'none', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>✕</button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

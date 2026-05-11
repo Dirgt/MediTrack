@@ -615,7 +615,7 @@ export default function ConfiguracionAdmin() {
                               <span style={{ fontSize: 16 }}>✏️</span> Editar Perfil
                             </p>
                             <form onSubmit={handleSaveEdit} style={{ display:'flex', flexDirection:'column', gap:16 }}>
-                              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px,1fr))', gap:16 }}>
                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                   <label className="form-label-premium">Nombre Completo</label>
                                   <div className="form-input-wrapper">
@@ -689,7 +689,7 @@ export default function ConfiguracionAdmin() {
                                 )}
 
                                 <form onSubmit={handleChangePassword} style={{ display:'flex', flexDirection:'column', gap:16, padding: '0 4px' }}>
-                                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+                                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px,1fr))', gap:16 }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
                                       <label className="form-label-premium">Nueva Contraseña</label>
                                       <div className="form-input-wrapper">
@@ -1020,7 +1020,7 @@ export default function ConfiguracionAdmin() {
                       </div>
                     </div>
 
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(250px,1fr))', gap:24 }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label-premium">Teléfono de Contacto</label>
                         <div className="form-input-wrapper">
