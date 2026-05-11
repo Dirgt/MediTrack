@@ -94,10 +94,31 @@ export default function ConfiguracionAdmin() {
   }
 
   async function fetchAllClientes() {
-    setFetchingClients(true);
-    const { data } = await supabase.from('clientes').select('*, profiles!clientes_vendedor_id_fkey(nombre_completo)').eq('activo', true).order('nombre');
-    if (data) setAllClientes(data);
-    setFetchingClients(false);
+    try {
+      setFetchingClients(true);
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*, profiles!clientes_vendedor_id_fkey(nombre_completo)')
+        .eq('activo', true)
+        .order('nombre');
+      
+      if (error) {
+        console.error('Error fetching clientes:', error);
+        // Fallback: intentar cargar sin el join si falla
+        const { data: simpleData } = await supabase
+          .from('clientes')
+          .select('*')
+          .eq('activo', true)
+          .order('nombre');
+        if (simpleData) setAllClientes(simpleData);
+      } else if (data) {
+        setAllClientes(data);
+      }
+    } catch (err) {
+      console.error('Unexpected error in fetchAllClientes:', err);
+    } finally {
+      setFetchingClients(false);
+    }
   }
 
   async function handleSaveClient(e) {
@@ -1012,14 +1033,21 @@ export default function ConfiguracionAdmin() {
                         </div>
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label-premium">Ciudad / Ubicación</label>
+                        <label className="form-label-premium">Ciudad / Localidad</label>
                         <div className="form-input-wrapper">
-                          <input type="text" value={clientFormData.ciudad}
+                          <select 
+                            value={clientFormData.ciudad}
                             onChange={(e) => setClientFormData(p => ({...p, ciudad: e.target.value}))}
-                            placeholder="Ej: Bogotá" 
                             className="form-input-premium"
-                          />
+                            style={{ appearance: 'none', cursor: 'pointer' }}
+                          >
+                            <option value="">📍 Seleccionar Localidad</option>
+                            {['Engativá', 'Kennedy', 'Bosa', 'Soacha'].map(loc => (
+                              <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                          </select>
                           <span className="input-icon">📍</span>
+                          <div style={{ position:'absolute', right:20, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:14, color:'#64748b', background:'#f1f5f9', width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>▼</div>
                         </div>
                       </div>
                     </div>

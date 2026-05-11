@@ -335,10 +335,21 @@ export default function CrearPedido() {
                           className="form-input-premium" />
                       </div>
                       <div>
-                        <label className="form-label-premium">Ciudad</label>
-                        <input type="text" placeholder="Ej: Cali"
-                          value={nuevoCliente.ciudad} onChange={e => setNuevoCliente(p => ({ ...p, ciudad: e.target.value }))}
-                          className="form-input-premium" />
+                        <label className="form-label-premium">Localidad</label>
+                        <div style={{ position: 'relative' }}>
+                          <select 
+                            value={nuevoCliente.ciudad} 
+                            onChange={e => setNuevoCliente(p => ({ ...p, ciudad: e.target.value }))}
+                            className="form-input-premium"
+                            style={{ appearance: 'none', cursor: 'pointer' }}
+                          >
+                            <option value="">📍 Seleccionar</option>
+                            {['Engativá', 'Kennedy', 'Bosa', 'Soacha'].map(loc => (
+                              <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                          </select>
+                          <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', fontSize:12, color:'#64748b' }}>▼</div>
+                        </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
