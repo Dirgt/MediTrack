@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
-import { cambiarEstadoPedido, cancelarPedido } from '@/app/actions/order_actions';
+import { cambiarEstadoPedido, cancelarPedido, registrarEntregaRepartidor } from '@/app/actions/order_actions';
 import SLAIndicator from '@/components/SLAIndicator';
 
 // ── Config visual de estados ──
@@ -79,6 +79,87 @@ function BarraProgreso({ estado }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Modal de Recaudo para Admin (cuando confirma una entrega) ──
+function ModalRecaudoAdmin({ pedido, onConfirm, onCancel }) {
+  const [metodo, setMetodo] = useState('efectivo');
+  const [valor, setValor] = useState('');
+  const [observacion, setObservacion] = useState('');
+  const [loading, setLoading] = useState(false);
+  const esContado = pedido.tipo_pago === 'contado';
+
+  const handleFinal = async () => {
+    const valorNum = parseFloat(valor) || 0;
+    if (esContado && valorNum <= 0 && !observacion.trim()) {
+      return alert('Este pedido es de CONTADO y no has registrado dinero. Por favor, escribe una observación explicando por qué no se recibió el pago.');
+    }
+    setLoading(true);
+    await onConfirm(metodo, valor, observacion);
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(0,0,0,0.6)', backdropFilter:'blur(6px)', padding:20 }}>
+      <div style={{ width:'100%', maxWidth:420, background:'white', borderRadius:28, padding:24, boxShadow:'0 20px 40px rgba(0,0,0,0.2)', animation:'popIn .3s cubic-bezier(.34,1.2,.64,1)' }}>
+        <div style={{ textAlign:'center', marginBottom:20 }}>
+          <div style={{ width:64, height:64, borderRadius:'50%', background:'rgba(16,185,129,0.1)', color:'#10b981', fontSize:32, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 12px' }}>✅</div>
+          <h3 style={{ margin:'0 0 4px', fontSize:20, fontWeight:800, color:'#084032' }}>Confirmar Entrega</h3>
+          <p style={{ margin:0, fontSize:14, color:'#6b7280' }}>Cliente: <strong>{pedido.cliente_nombre}</strong></p>
+          {esContado && <span style={{ display:'inline-block', marginTop:8, background:'rgba(239,68,68,0.1)', color:'#dc2626', fontSize:12, fontWeight:700, padding:'4px 12px', borderRadius:10 }}>💵 CONTADO — Registrar recaudo</span>}
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#084032', marginBottom:8 }}>Método de Pago</label>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+            {['efectivo', 'transferencia', 'pendiente'].map(m => (
+              <button key={m} onClick={() => setMetodo(m)} style={{
+                padding:'10px 4px', borderRadius:12, border: metodo === m ? '2px solid #10b981' : '2px solid #f1f5f9',
+                background: metodo === m ? 'rgba(16,185,129,0.05)' : 'white', color: metodo === m ? '#10b981' : '#94a3b8',
+                fontWeight:800, fontSize:11, cursor:'pointer', textTransform:'uppercase', transition:'all .2s'
+              }}>{m}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#084032', marginBottom:8 }}>
+            Valor Recaudado {esContado && metodo !== 'pendiente' && <span style={{ color:'#ef4444' }}>*</span>}
+          </label>
+          <div style={{ position:'relative' }}>
+            <span style={{ position:'absolute', left:16, top:'50%', transform:'translateY(-50%)', fontWeight:800, color:'#94a3b8' }}>$</span>
+            <input
+              type="number" value={valor} onChange={e => setValor(e.target.value)}
+              disabled={metodo === 'pendiente'}
+              placeholder={metodo === 'pendiente' ? 'Sin recaudo' : (esContado ? 'Valor recibido' : 'Opcional')}
+              style={{ width:'100%', boxSizing:'border-box', padding:'14px 16px 14px 32px', borderRadius:16, border:'2px solid #f1f5f9', fontSize:16, fontWeight:700, outline:'none', background: metodo === 'pendiente' ? '#f8fafc' : 'white' }}
+            />
+          </div>
+        </div>
+
+        <div style={{ marginBottom:24 }}>
+          <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#084032', marginBottom:8 }}>Observaciones / Justificación</label>
+          <textarea
+            value={observacion}
+            onChange={e => setObservacion(e.target.value)}
+            placeholder="Nota interna sobre la entrega o el recaudo..."
+            style={{ width:'100%', boxSizing:'border-box', padding:'12px', borderRadius:16, border:'2px solid #f1f5f9', fontSize:14, minHeight:80, resize:'none', outline:'none', fontFamily:'inherit' }}
+          />
+        </div>
+
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onCancel} style={{ flex:1, padding:'14px', borderRadius:16, border:'1px solid #e2e8f0', background:'white', fontWeight:700, cursor:'pointer', color:'#6b7280' }}>Cancelar</button>
+          <button onClick={handleFinal} disabled={loading} style={{
+            flex:2, padding:'14px', borderRadius:16, border:'none', background:'#10b981',
+            color:'white', fontWeight:800, cursor:'pointer', boxShadow:'0 6px 16px rgba(16,185,129,0.25)',
+            opacity: loading ? 0.7 : 1, display:'flex', alignItems:'center', justifyContent:'center', gap:8
+          }}>
+            {loading ? <div style={{ width:16, height:16, borderRadius:'50%', border:'2px solid rgba(255,255,255,0.3)', borderTopColor:'white', animation:'spin .7s linear infinite' }} /> : 'Confirmar Entrega ✅'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -303,6 +384,7 @@ export default function MisPedidos() {
   const [repartidores, setRepartidores] = useState([]);
   
   const [modalData, setModalData]     = useState(null);
+  const [modalRecaudo, setModalRecaudo] = useState(null); // Para la confirmación de entrega con recaudo
   const [modalCancelar, setModalCancelar] = useState(null);
   const [pedidoDetalle, setPedidoDetalle] = useState(null);
   const [historial, setHistorial]     = useState({});
@@ -942,7 +1024,13 @@ export default function MisPedidos() {
                              <p style={{ margin:0, fontSize:12, fontWeight:800, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1 }}>Gestionar Estado</p>
                              <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:10 }}>
                                {accs.map(acc => (
-                                 <button key={acc.a} onClick={()=>setModalData({pedido, accion:acc})} style={{
+                                 <button key={acc.a} onClick={() => {
+                                   if (acc.a === 'entregado') {
+                                     setModalRecaudo(pedido);
+                                   } else {
+                                     setModalData({pedido, accion:acc});
+                                   }
+                                 }} style={{
                                    background:acc.color, color:'white', border:'none', padding:'16px', borderRadius:16,
                                    fontSize:15, fontWeight:800, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:10,
                                    boxShadow:`0 6px 16px ${acc.color}40`, transition:'transform .2s'
@@ -1043,6 +1131,28 @@ export default function MisPedidos() {
         </div>
       )}
 
+      {/* Modal de Recaudo para Confirmación de Entrega (Admin) */}
+      {modalRecaudo && (
+        <ModalRecaudoAdmin
+          pedido={modalRecaudo}
+          onConfirm={async (metodo, valor, observacion) => {
+            const res = await registrarEntregaRepartidor(modalRecaudo.id, {
+              metodo,
+              valor: parseFloat(valor) || 0,
+              observacion,
+              usuarioId: user?.id
+            });
+            setModalRecaudo(null);
+            if (res.success) {
+              showToast('Entrega confirmada con recaudo registrado ✅');
+            } else {
+              showToast(res.error, false);
+            }
+          }}
+          onCancel={() => setModalRecaudo(null)}
+        />
+      )}
+
       {/* Modal cambio de estado */}
       {modalData && (
         <ModalAccion
@@ -1061,7 +1171,14 @@ export default function MisPedidos() {
           isAdmin={isAdmin}
           onCancel={() => setPedidoDetalle(null)}
           accs={isAdmin ? (ACCIONES_ADMIN[pedidoDetalle.estado] || []) : []}
-          onAccion={(p, a) => { setPedidoDetalle(null); setModalData({pedido:p, accion:a}); }}
+          onAccion={(p, a) => { 
+            setPedidoDetalle(null); 
+            if (a.a === 'entregado') {
+              setModalRecaudo(p);
+            } else {
+              setModalData({pedido:p, accion:a});
+            }
+          }}
           onCancelar={(p) => { setPedidoDetalle(null); setModalCancelar(p); }}
         />
       )}
