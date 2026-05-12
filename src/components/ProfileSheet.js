@@ -8,6 +8,7 @@ import { useUser } from '@/context/UserContext';
 const ROLE_LABELS = {
   admin: { label: 'Administrador', emoji: '🛡️', color: '#8b5cf6' },
   vendedor: { label: 'Vendedor Ejecutivo', emoji: '🤝', color: '#0F6E56' },
+  repartidor: { label: 'Repartidor / Domicilio', emoji: '🚚', color: '#0d9488' },
 };
 
 export default function ProfileSheet({ onClose }) {

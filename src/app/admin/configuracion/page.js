@@ -8,6 +8,7 @@ import { createStaffAccount, updateStaffAccount, unassignClient, assignClientToS
 const ROLE_CONFIG = {
   admin:    { label: 'Administrador',      emoji: '🛡️', color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)',  border: 'rgba(139,92,246,0.25)' },
   vendedor: { label: 'Vendedor Ejecutivo', emoji: '🤝', color: '#0F6E56', bg: 'rgba(15,110,86,0.1)',   border: 'rgba(15,110,86,0.25)'  },
+  repartidor: { label: 'Repartidor / Domicilio', emoji: '🚚', color: '#0d9488', bg: 'rgba(13,148,136,0.1)', border: 'rgba(13,148,136,0.25)' },
 };
 const EMPTY_FORM = { email: '', password: '', full_name: '', role_type: 'vendedor' };
 
@@ -305,8 +306,9 @@ export default function ConfiguracionAdmin() {
     </div>
   );
 
-  const admins    = users.filter(u => u.role === 'admin');
-  const vendedores = users.filter(u => u.role === 'vendedor');
+  const admins      = users.filter(u => u.role === 'admin');
+  const vendedores   = users.filter(u => u.role === 'vendedor');
+  const repartidores = users.filter(u => u.role === 'repartidor');
 
   return (
     <div style={{ paddingBottom: 90 }}>
@@ -394,13 +396,14 @@ export default function ConfiguracionAdmin() {
             )}
 
             {/* Stats row */}
-            <div style={{ display:'flex', gap:10, marginBottom:18 }}>
+            <div style={{ display:'flex', gap:10, marginBottom:18, flexWrap:'wrap' }}>
               {[
-                { label:'Total',      value:users.length,       icon:'👥', color:'#0F6E56' },
-                { label:'Vendedores', value:vendedores.length,  icon:'🤝', color:'#0F6E56' },
-                { label:'Admins',     value:admins.length,      icon:'🛡️', color:'#8b5cf6' },
+                { label:'Total',        value: users.length,         icon:'👥', color:'#0F6E56' },
+                { label:'Vendedores',   value: vendedores.length,    icon:'🤝', color:'#0F6E56' },
+                { label:'Admins',       value: admins.length,        icon:'🛡️', color:'#8b5cf6' },
+                { label:'Repartidores', value: repartidores.length,  icon:'🚚', color:'#0d9488' },
               ].map(s => (
-                <div key={s.label} className="glass-panel" style={{ flex:1, padding:'14px 10px', textAlign:'center', borderRadius:16 }}>
+                <div key={s.label} className="glass-panel" style={{ flex:'1 1 80px', padding:'14px 10px', textAlign:'center', borderRadius:16 }}>
                   <div style={{ fontSize:20, marginBottom:4 }}>{s.icon}</div>
                   <div style={{ fontSize:22, fontWeight:800, color:s.color, lineHeight:1 }}>{s.value}</div>
                   <div style={{ fontSize:10, color:'var(--text-muted)', fontWeight:600, marginTop:4, textTransform:'uppercase', letterSpacing:'.5px' }}>{s.label}</div>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MediTrack Mapa</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+  #map { width: 100%; height: 100%; }
+  .leaflet-popup-content { min-width: 200px; }
+  .btn-nav { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: 1; padding: 8px; border-radius: 10px; color: #fff; text-decoration: none; text-align: center; font-size: 12px; font-weight: 700; }
+  .btn-waze { background: #33ccff; }
+  .btn-maps { background: #4285f4; }
+  .btn-update { margin-top: 8px; width: 100%; padding: 7px; border-radius: 8px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .btn-update:hover { background: #f8fafc; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+(function() {
+  // Inicializar mapa centrado en Colombia
+  var map = L.map('map', { zoomControl: true }).setView([4.658, -74.094], 13);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+
+  var markers = [];
+  var userMarker = null;
+
+  // Icono de droguería
+  function makeIcon() {
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:17px;">🏪</div>',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -22]
+    });
+  }
+
+  // Icono de usuario (punto azul)
+  function makeUserIcon() {
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid #fff;box-shadow:0 0 0 6px rgba(59,130,246,.2),0 2px 8px rgba(0,0,0,.25)"></div>',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+  }
+
+  function popupHTML(c) {
+    var html = '<div style="font-family:system-ui">';
+    html += '<b style="font-size:14px;color:#0f172a">' + c.nombre + '</b>';
+    if (c.direccion) html += '<br><span style="font-size:12px;color:#64748b">📍 ' + c.direccion + '</span>';
+    if (c.ciudad) html += '<br><span style="font-size:12px;color:#64748b">🏙️ ' + c.ciudad + '</span>';
+    if (c.telefono) html += '<br><span style="font-size:12px;color:#64748b">📞 ' + c.telefono + '</span>';
+    html += '<div style="display:flex;gap:6px;margin-top:10px">';
+    html += '<a href="https://waze.com/ul?ll=' + c.latitud + ',' + c.longitud + '&navigate=yes" target="_blank" rel="noopener" class="btn-nav btn-waze">🧭 Waze</a>';
+    html += '<a href="https://www.google.com/maps/dir/?api=1&destination=' + c.latitud + ',' + c.longitud + '" target="_blank" rel="noopener" class="btn-nav btn-maps">📍 Maps</a>';
+    html += '</div>';
+    html += '<button class="btn-update" onclick="requestUpdateLocation(\'' + c.id + '\',\'' + c.nombre.replace(/'/g, "\\'") + '\')">🔄 Actualizar ubicación</button>';
+    html += '</div>';
+    return html;
+  }
+
+  // Comunicación con React vía postMessage
+  window.addEventListener('message', function(event) {
+    var data = event.data;
+    if (!data || !data.type) return;
+
+    if (data.type === 'SET_MARKERS') {
+      // Limpiar markers existentes
+      markers.forEach(function(m) { map.removeLayer(m); });
+      markers = [];
+      var bounds = [];
+
+      (data.clientes || []).forEach(function(c) {
+        if (c.latitud && c.longitud) {
+          var m = L.marker([c.latitud, c.longitud], { icon: makeIcon() })
+            .bindPopup(popupHTML(c), { maxWidth: 270 })
+            .addTo(map);
+          markers.push(m);
+          bounds.push([c.latitud, c.longitud]);
+        }
+      });
+
+      // Posición del usuario
+      if (data.userPos) {
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = L.marker([data.userPos.lat, data.userPos.lng], { icon: makeUserIcon() })
+          .bindPopup('<b style="font-size:13px">📍 Mi ubicación</b>')
+          .addTo(map);
+        bounds.push([data.userPos.lat, data.userPos.lng]);
+      }
+
+      // Ajustar vista
+      if (bounds.length > 1) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+      } else if (bounds.length === 1) {
+        map.setView(bounds[0], 15);
+      }
+    }
+
+    if (data.type === 'SET_CENTER') {
+      map.setView([data.lat, data.lng], data.zoom || 13);
+    }
+  });
+
+  // Solicitar actualización de ubicación → enviar a React
+  window.requestUpdateLocation = function(id, nombre) {
+    map.closePopup();
+    window.parent.postMessage({ type: 'UPDATE_LOCATION', clienteId: id, clienteNombre: nombre }, '*');
+  };
+
+  // Notificar a React que el mapa está listo
+  window.parent.postMessage({ type: 'MAP_READY' }, '*');
+})();
+</script>
+</body>
+</html>

@@ -85,22 +85,27 @@ function BarraProgreso({ estado }) {
 
 // ── Modales (Mismo diseño de confirmación optimizado) ──
 // (El componente modal sigue manteniendo su estilo funcional pero con mejor padding y colores)
-function ModalAccion({ accion, pedido, adminId, onConfirm, onCancel }) {
+function ModalAccion({ accion, pedido, adminId, repartidores = [], onConfirm, onCancel }) {
   const [motivo, setMotivo]   = useState('');
   const [nota, setNota]       = useState('');
   const [fecha, setFecha]     = useState('');
+  const [repartidorId, setRepartidorId] = useState('');
   const [loading, setLoading] = useState(false);
 
   const esRechazo   = accion.a === 'rechazado_puerta';
   const esReintento = accion.a === 'programado_reintento';
+  const esDespacho  = accion.a === 'en_camino';
 
   const handleConfirm = async () => {
     if (esRechazo && !motivo.trim()) return alert('El motivo del rechazo es obligatorio');
+    if (esDespacho && !repartidorId) return alert('Debes seleccionar un repartidor para el despacho');
+    
     setLoading(true);
     await onConfirm({
       motivo_rechazo: esRechazo ? motivo : null,
       nota_reintento: esReintento ? nota : null,
       fecha_reintento: fecha ? new Date(fecha).toISOString() : null,
+      repartidorId: esDespacho ? repartidorId : null,
       notas: (!esRechazo && !esReintento) ? nota : null,
       adminId,
     });
@@ -131,6 +136,27 @@ function ModalAccion({ accion, pedido, adminId, onConfirm, onCancel }) {
               onFocus={e => e.target.style.borderColor = accion.color}
               onBlur={e => e.target.style.borderColor = '#e5e7eb'}
             />
+          </div>
+        )}
+
+        {esDespacho && (
+          <div style={{ marginBottom:20 }}>
+            <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#084032', marginBottom:8 }}>
+              🚚 Asignar Repartidor <span style={{color:'#ef4444'}}>*</span>
+            </label>
+            <div className="custom-select-wrapper" style={{ background:'#f1f5f9', padding:4, borderRadius:16 }}>
+              <select value={repartidorId} onChange={e => setRepartidorId(e.target.value)}
+                style={{ width:'100%', padding:'14px', border:'none', background:'transparent', fontSize:15, fontWeight:700, color:'#084032', outline:'none', appearance:'none', cursor:'pointer' }}
+              >
+                <option value="">-- Seleccionar Repartidor --</option>
+                {repartidores.map(r => (
+                  <option key={r.id} value={r.id}>{r.nombre_completo}</option>
+                ))}
+              </select>
+            </div>
+            {repartidores.length === 0 && (
+              <p style={{ fontSize:11, color:'#ef4444', marginTop:6, fontWeight:600 }}>⚠️ No hay repartidores creados. Ve a Configuración.</p>
+            )}
           </div>
         )}
 
@@ -193,8 +219,16 @@ function ModalDetalle({ pedido, historial, onCancel, isAdmin, accs, onAccion, on
         <div style={{ background: 'linear-gradient(135deg, #084032 0%, #0F6E56 100%)', padding:24, borderRadius:'28px 28px 0 0', position:'relative', color:'white' }}>
           <h3 style={{ margin:0, fontSize:22, fontWeight:900 }}>Pedido #{pedido.numero_pedido}</h3>
           <p style={{ margin:'4px 0 0', opacity:0.8, fontSize:14 }}>{pedido.cliente_nombre}</p>
-          <div style={{ marginTop:12, background:cfg.bg, color:cfg.color, display:'inline-block', padding:'4px 12px', borderRadius:10, fontSize:12, fontWeight:800 }}>
-             {cfg.emoji} {cfg.label}
+          <div style={{ marginTop:12, display:'flex', gap:8, flexWrap:'wrap' }}>
+            <div style={{ background:cfg.bg, color:cfg.color, padding:'4px 12px', borderRadius:10, fontSize:12, fontWeight:800 }}>
+               {cfg.emoji} {cfg.label}
+            </div>
+            <div style={{ background: pedido.tipo_pago === 'credito' ? 'rgba(59,130,246,0.15)' : 'rgba(239,68,68,0.15)', color: pedido.tipo_pago === 'credito' ? '#2563eb' : '#dc2626', padding:'4px 12px', borderRadius:10, fontSize:12, fontWeight:800 }}>
+               {pedido.tipo_pago === 'credito' ? '💳 CRÉDITO' : '💵 CONTADO'}
+            </div>
+            <div style={{ background: 'rgba(100,116,139,0.15)', color: '#475569', padding:'4px 12px', borderRadius:10, fontSize:12, fontWeight:800 }}>
+               {pedido.tipo_factura === 'factura_electronica' ? '📄 ELECTRÓNICA' : '🧾 FÍSICA/REM'}
+            </div>
           </div>
         </div>
 
@@ -247,6 +281,13 @@ export default function MisPedidos() {
   const router = useRouter();
   const isAdmin = profile?.role === 'admin';
 
+  // Redirigir repartidores a su vista dedicada
+  useEffect(() => {
+    if (profile?.role === 'repartidor') {
+      router.replace('/reparto');
+    }
+  }, [profile?.role, router]);
+
   const [pedidos, setPedidos]         = useState([]);
   const [loading, setLoading]         = useState(true);
   const [expanded, setExpanded]       = useState(null);
@@ -259,6 +300,7 @@ export default function MisPedidos() {
   const [filtroCliente, setFiltroCliente]   = useState('todos'); // NUEVO: Select de Cliente
   
   const [vendedores, setVendedores]   = useState([]);
+  const [repartidores, setRepartidores] = useState([]);
   
   const [modalData, setModalData]     = useState(null);
   const [modalCancelar, setModalCancelar] = useState(null);
@@ -303,8 +345,10 @@ export default function MisPedidos() {
       .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
                observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
                intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
+               recaudo_metodo, recaudo_valor,
                order_items(medicamento_nombre, cantidad),
-               profiles!orders_vendedor_id_fkey(id, nombre_completo)`, { count: 'exact' })
+               profiles!orders_vendedor_id_fkey(id, nombre_completo),
+               repartidor:profiles!orders_repartidor_id_fkey(nombre_completo)`, { count: 'exact' })
       .order('creado_en', { ascending: false });
 
     // Filtros
@@ -363,8 +407,10 @@ export default function MisPedidos() {
           .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
                    observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
                    intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
+                   recaudo_metodo, recaudo_valor,
                    order_items(medicamento_nombre, cantidad),
-                   profiles!orders_vendedor_id_fkey(id, nombre_completo)`)
+                   profiles!orders_vendedor_id_fkey(id, nombre_completo),
+                   repartidor:profiles!orders_repartidor_id_fkey(nombre_completo)`)
           .eq('id', orderId)
           .single();
         if (data) {
@@ -398,7 +444,16 @@ export default function MisPedidos() {
 
   useEffect(() => {
     fetchClientes();
-  }, [fetchClientes]);
+    
+    // Cargar repartidores solo para admin (para el modal de despacho)
+    if (isAdmin) {
+      const loadRepartidores = async () => {
+        const { data } = await supabase.from('profiles').select('id, nombre_completo').eq('role', 'repartidor');
+        if (data) setRepartidores(data);
+      };
+      loadRepartidores();
+    }
+  }, [fetchClientes, isAdmin]);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
@@ -716,6 +771,34 @@ export default function MisPedidos() {
                                📅 Entrega: {new Date(pedido.fecha_entrega + 'T00:00:00').toLocaleDateString('es-CO', {month:'short', day:'numeric'})}
                              </span>
                            )}
+                           
+                           {/* Nuevas insignias de Pago y Factura */}
+                           <span style={{ 
+                             fontSize:11, fontWeight:800, 
+                             color: pedido.tipo_pago === 'credito' ? '#2563eb' : '#dc2626', 
+                             background: pedido.tipo_pago === 'credito' ? 'rgba(59,130,246,0.1)' : 'rgba(239,68,68,0.1)', 
+                             padding:'4px 10px', borderRadius:10, textTransform:'uppercase' 
+                           }}>
+                             {pedido.tipo_pago === 'credito' ? '💳 Crédito' : '💵 Contado'}
+                           </span>
+                           <span style={{ 
+                             fontSize:11, fontWeight:800, color:'#475569', 
+                             background:'rgba(100,116,139,0.1)', 
+                             padding:'4px 10px', borderRadius:10, textTransform:'uppercase' 
+                           }}>
+                             {pedido.tipo_factura === 'factura_electronica' ? '📄 Electrónica' : '🧾 Física'}
+                           </span>
+
+                           {pedido.repartidor?.nombre_completo && (
+                             <span style={{ fontSize:12, fontWeight:700, color:'#0d9488', background:'rgba(13,148,136,0.1)', padding:'4px 10px', borderRadius:10 }}>
+                               🚚 Repartidor: {pedido.repartidor.nombre_completo}
+                             </span>
+                           )}
+                           {pedido.recaudo_valor > 0 && (
+                             <span style={{ fontSize:12, fontWeight:800, color:'#10b981', background:'rgba(16,185,129,0.1)', padding:'4px 10px', borderRadius:10 }}>
+                               💰 Recaudado: ${pedido.recaudo_valor.toLocaleString()} ({pedido.recaudo_metodo})
+                             </span>
+                           )}
                            <span style={{ fontSize:13, color:'#94a3b8', fontWeight:500 }}>
                              {new Date(pedido.creado_en).toLocaleDateString('es-CO', {month:'short', day:'numeric'})}
                            </span>
@@ -964,6 +1047,7 @@ export default function MisPedidos() {
       {modalData && (
         <ModalAccion
           accion={modalData.accion} pedido={modalData.pedido} adminId={user?.id}
+          repartidores={repartidores}
           onConfirm={(opts) => ejecutarAccion(modalData.pedido, modalData.accion, opts)}
           onCancel={() => setModalData(null)}
         />

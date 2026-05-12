@@ -150,9 +150,15 @@ export default function DetallePedido({ params }) {
           <button onClick={() => router.push('/pedidos')} style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:'50%', width:40, height:40, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'white', fontSize:20, marginBottom:16, backdropFilter:'blur(8px)' }}>
             ←
           </button>
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
             <span style={{ background: cfg.bg, color: cfg.color, fontWeight:800, fontSize:12, padding:'5px 12px', borderRadius:20, display:'flex', alignItems:'center', gap:5, backdropFilter:'blur(4px)' }}>
               {cfg.emoji} {cfg.label}
+            </span>
+            <span style={{ background: pedido.tipo_pago === 'credito' ? 'rgba(59,130,246,0.2)' : 'rgba(239,68,68,0.2)', color: pedido.tipo_pago === 'credito' ? '#93c5fd' : '#fecaca', fontWeight:800, fontSize:12, padding:'5px 12px', borderRadius:20, backdropFilter:'blur(4px)' }}>
+              {pedido.tipo_pago === 'credito' ? '💳 CRÉDITO' : '💵 CONTADO'}
+            </span>
+            <span style={{ background: 'rgba(255,255,255,0.15)', color: 'white', fontWeight:800, fontSize:12, padding:'5px 12px', borderRadius:20, backdropFilter:'blur(4px)' }}>
+              {pedido.tipo_factura === 'factura_electronica' ? '📄 ELECTRÓNICA' : '🧾 FÍSICA'}
             </span>
           </div>
           <h1 style={{ color:'white', fontSize:26, fontWeight:900, margin:'0 0 4px', lineHeight:1.2 }}>{pedido.cliente_nombre}</h1>

@@ -1,11 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 
 export default function CrearPedido() {
   const { user, profile } = useUser();
+  const router = useRouter();
+
+  // Redirigir repartidores a su vista dedicada
+  useEffect(() => {
+    if (profile?.role === 'repartidor') {
+      router.replace('/reparto');
+    }
+  }, [profile?.role, router]);
 
   // ── Clientes ──
   const [clientes, setClientes] = useState([]);

@@ -18,16 +18,21 @@ export default function Navigation() {
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const drawerRef = useRef(null);
 
+  const esRepartidor = profile?.role === 'repartidor';
+
   // Fetch unread count for badge
   useEffect(() => {
     if (!profile?.id) return;
 
     const fetchUnread = async () => {
-      const { count } = await supabase
+      let query = supabase
         .from('notificaciones')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', profile.id)
         .eq('leida', false);
+      // Repartidores solo ven notificaciones de asignación de reparto
+      if (esRepartidor) query = query.eq('tipo', 'asignacion_reparto');
+      const { count } = await query;
       setUnreadCount(count || 0);
     };
 
@@ -35,8 +40,10 @@ export default function Navigation() {
 
     const channel = supabase.channel(`nav_notif_${profile.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notificaciones', filter: `user_id=eq.${profile.id}` }, (payload) => {
+        // Repartidores solo procesan notificaciones de asignación
+        if (esRepartidor && payload.new.tipo !== 'asignacion_reparto') return;
+
         setUnreadCount(c => c + 1);
-        // Prepend new notification to drawer list if it's open
         setNotificaciones(prev => [payload.new, ...prev]);
         
         // 🔊 Play sound alert
@@ -49,6 +56,8 @@ export default function Navigation() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notificaciones', filter: `user_id=eq.${profile.id}` }, payload => {
         if (payload.new.leida) {
+          // Repartidores solo procesan sus notificaciones relevantes
+          if (esRepartidor && payload.new.tipo !== 'asignacion_reparto') return;
           setUnreadCount(c => Math.max(0, c - 1));
           setNotificaciones(prev => prev.map(n => n.id === payload.new.id ? payload.new : n));
         }
@@ -56,7 +65,7 @@ export default function Navigation() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [profile?.id]);
+  }, [profile?.id, esRepartidor]);
 
   // Close drawer when clicking outside
   useEffect(() => {
@@ -79,10 +88,13 @@ export default function Navigation() {
     if (showNotifDrawer) return; // closing
 
     setLoadingNotifs(true);
-    const { data } = await supabase
+    let query = supabase
       .from('notificaciones')
       .select('*')
-      .eq('user_id', profile.id)
+      .eq('user_id', profile.id);
+    // Repartidores solo ven notificaciones de asignación de reparto
+    if (esRepartidor) query = query.eq('tipo', 'asignacion_reparto');
+    const { data } = await query
       .order('creado_en', { ascending: false })
       .limit(20);
 
@@ -99,19 +111,8 @@ export default function Navigation() {
 
   if (pathname === '/login') return null;
 
-  const navItems = [
-    { href: '/', emoji: '➕', label: 'Crear' },
-    { href: '/pedidos', emoji: '📦', label: 'Ver Pedido' },
-  ];
-
-  const adminItems = [
-    ...(profile?.role === 'admin'
-      ? [
-          { href: '/admin/dashboard', emoji: '📊', label: 'Dashboard' },
-          { href: '/admin/configuracion', emoji: '⚙️', label: 'Configuración' }
-        ]
-      : []),
-  ];
+  const isRepartidor = profile?.role === 'repartidor';
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <>
@@ -202,8 +203,12 @@ export default function Navigation() {
                           if (!notif.leida) {
                             await supabase.from('notificaciones').update({ leida: true }).eq('id', notif.id);
                           }
-                          // Use router.push for smoother navigation
-                          router.push(`/pedidos/${notif.order_id}`);
+                          // Repartidores van a /reparto, los demás a /pedidos
+                          if (isRepartidor) {
+                            router.push('/reparto');
+                          } else {
+                            router.push(`/pedidos/${notif.order_id}`);
+                          }
                         }
                     }}
                     style={{
@@ -277,7 +282,7 @@ export default function Navigation() {
         msOverflowStyle: 'none', /* IE and Edge */
       }}>
 
-        {/* 1. Mi Cuenta */}
+        {/* 1. Mi Cuenta — visible para todos */}
         <button
           onClick={() => setShowProfile(true)}
           style={{
@@ -295,7 +300,7 @@ export default function Navigation() {
         </button>
 
         {/* 2. Dashboard (Solo Admin) */}
-        {profile?.role === 'admin' && (
+        {isAdmin && (
           <Link
             href="/admin/dashboard"
             style={{
@@ -326,97 +331,135 @@ export default function Navigation() {
           </Link>
         )}
 
-        {/* 3. Crear */}
-        <Link
-          href="/"
-          style={{
-            textDecoration: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
-            gap: 4, padding: '4px 10px', borderRadius: 12,
-            background: pathname === '/' ? 'rgba(15,110,86,0.08)' : 'transparent',
-            transition: 'background 0.15s',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <span style={{
-            fontSize: 22,
-            filter: pathname === '/' ? 'none' : 'grayscale(100%) opacity(45%)',
-            transition: 'filter 0.2s',
-            lineHeight: 1,
-            display: 'block'
-          }}>
-            ➕
-          </span>
-          <span style={{
-            fontSize: 10, fontWeight: pathname === '/' ? 700 : 500,
-            color: pathname === '/' ? 'var(--brand)' : '#9ca3af',
-            lineHeight: 1, marginTop: 4
-          }}>
-            Crear
-          </span>
-        </Link>
+        {/* 3. Crear — Solo admin y vendedor */}
+        {!isRepartidor && (
+          <Link
+            href="/"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/' ? 'rgba(15,110,86,0.08)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              ➕
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/' ? 700 : 500,
+              color: pathname === '/' ? 'var(--brand)' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Crear
+            </span>
+          </Link>
+        )}
 
-        {/* 4. Ver Pedido */}
-        <Link
-          href="/pedidos"
-          style={{
-            textDecoration: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
-            gap: 4, padding: '4px 10px', borderRadius: 12,
-            background: pathname === '/pedidos' ? 'rgba(15,110,86,0.08)' : 'transparent',
-            transition: 'background 0.15s',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <span style={{
-            fontSize: 22,
-            filter: pathname === '/pedidos' ? 'none' : 'grayscale(100%) opacity(45%)',
-            transition: 'filter 0.2s',
-            lineHeight: 1,
-            display: 'block'
-          }}>
-            📦
-          </span>
-          <span style={{
-            fontSize: 10, fontWeight: pathname === '/pedidos' ? 700 : 500,
-            color: pathname === '/pedidos' ? 'var(--brand)' : '#9ca3af',
-            lineHeight: 1, marginTop: 4
-          }}>
-            Ver Pedido
-          </span>
-        </Link>
+        {/* 4. Ver Pedido — Solo admin y vendedor */}
+        {!isRepartidor && (
+          <Link
+            href="/pedidos"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/pedidos' ? 'rgba(15,110,86,0.08)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/pedidos' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              📦
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/pedidos' ? 700 : 500,
+              color: pathname === '/pedidos' ? 'var(--brand)' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Ver Pedido
+            </span>
+          </Link>
+        )}
 
-        {/* 4.5. Calendario */}
-        <Link
-          href="/calendario"
-          style={{
-            textDecoration: 'none',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
-            gap: 4, padding: '4px 10px', borderRadius: 12,
-            background: pathname === '/calendario' ? 'rgba(15,110,86,0.08)' : 'transparent',
-            transition: 'background 0.15s',
-            WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <span style={{
-            fontSize: 22,
-            filter: pathname === '/calendario' ? 'none' : 'grayscale(100%) opacity(45%)',
-            transition: 'filter 0.2s',
-            lineHeight: 1,
-            display: 'block'
-          }}>
-            📅
-          </span>
-          <span style={{
-            fontSize: 10, fontWeight: pathname === '/calendario' ? 700 : 500,
-            color: pathname === '/calendario' ? 'var(--brand)' : '#9ca3af',
-            lineHeight: 1, marginTop: 4
-          }}>
-            Calendario
-          </span>
-        </Link>
+        {/* 4.5. Calendario — Solo admin y vendedor */}
+        {!isRepartidor && (
+          <Link
+            href="/calendario"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/calendario' ? 'rgba(15,110,86,0.08)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/calendario' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              📅
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/calendario' ? 700 : 500,
+              color: pathname === '/calendario' ? 'var(--brand)' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Calendario
+            </span>
+          </Link>
+        )}
 
-        {/* 5. Notificación */}
+        {/* 5. Reparto — Repartidores y Admin */}
+        {(isRepartidor || isAdmin) && (
+          <Link
+            href="/reparto"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/reparto' ? 'rgba(13,148,136,0.12)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/reparto' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              🚚
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/reparto' ? 700 : 500,
+              color: pathname === '/reparto' ? '#0d9488' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Reparto
+            </span>
+          </Link>
+        )}
+
+        {/* 6. Notificación — visible para todos */}
         <button
           onClick={openNotifDrawer}
           style={{
@@ -461,8 +504,8 @@ export default function Navigation() {
           </span>
         </button>
 
-        {/* 6. Configuración (Solo Admin) */}
-        {profile?.role === 'admin' && (
+        {/* 7. Configuración (Solo Admin) */}
+        {isAdmin && (
           <Link
             href="/admin/configuracion"
             style={{

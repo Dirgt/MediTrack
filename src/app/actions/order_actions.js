@@ -94,6 +94,9 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
       update.nota_reintento  = opciones.nota_reintento || null;
       update.fecha_reintento = opciones.fecha_reintento || null;
     }
+    if (nuevoEstado === 'en_camino') {
+      update.repartidor_id = opciones.repartidorId || null;
+    }
     if (nuevoEstado === 'entregado') {
       update.pagado = true;
     }
@@ -112,7 +115,7 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
       order_id:        orderId,
       estado_anterior: order.estado,
       estado_nuevo:    nuevoEstado,
-      nota_interna:    opciones.notas || opciones.motivo_rechazo || opciones.nota_reintento || opciones.motivo_cancelacion || null,
+      nota_interna:    opciones.notas || opciones.motivo_rechazo || opciones.nota_reintento || opciones.motivo_cancelacion || (nuevoEstado === 'en_camino' ? 'Pedido asignado a repartidor' : null),
       cambiado_por:    opciones.adminId || null,
     });
 
@@ -245,6 +248,58 @@ export async function cancelarPedido(orderId, { motivo, usuarioId, esAdmin }) {
       estado_nuevo:    'cancelado',
       nota_interna:    motivo || 'Pedido cancelado',
       cambiado_por:    usuarioId,
+    });
+
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+/**
+ * Registra la entrega final por parte de un repartidor.
+ */
+export async function registrarEntregaRepartidor(orderId, { metodo, valor, observacion, usuarioId }) {
+  try {
+    if (!usuarioId) return { success: false, error: 'ID de usuario requerido para registrar la entrega' };
+
+    const supabase = getAdminClient();
+
+    const { data: order, error: fetchErr } = await supabase
+      .from('orders')
+      .select('id, estado, tipo_pago, cliente_nombre')
+      .eq('id', orderId)
+      .single();
+
+    if (fetchErr || !order) return { success: false, error: 'Pedido no encontrado' };
+    if (order.estado !== 'en_camino') return { success: false, error: 'Solo se pueden entregar pedidos que estén en camino' };
+
+    const valorNumerico = parseFloat(valor) || 0;
+    
+    // Nueva lógica: Si es contado y no hay dinero, exigir observación
+    if (order.tipo_pago === 'contado' && valorNumerico <= 0 && !observacion?.trim()) {
+      return { success: false, error: 'Para entregas de contado sin recaudo, debes incluir una observación/justificación.' };
+    }
+
+    const { error: updateErr } = await supabase
+      .from('orders')
+      .update({
+        estado: 'entregado',
+        pagado: valorNumerico > 0, // Solo marcado como pagado si hubo dinero
+        recaudo_metodo: metodo,
+        recaudo_valor: valorNumerico,
+        actualizado_en: new Date().toISOString()
+      })
+      .eq('id', orderId);
+
+    if (updateErr) return { success: false, error: updateErr.message };
+
+    await supabase.from('order_history').insert({
+      order_id: orderId,
+      estado_anterior: 'en_camino',
+      estado_nuevo: 'entregado',
+      nota_interna: `Entrega finalizada por repartidor. Recaudo: ${(metodo || '').toUpperCase()} - $${valorNumerico.toLocaleString('es-CO')}. ${observacion ? 'OBS: ' + observacion : ''}`,
+      cambiado_por: usuarioId
     });
 
     return { success: true };

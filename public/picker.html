@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body, html, #map { margin: 0; height: 100%; width: 100%; background: #f8fafc; }
+        .leaflet-container { font-family: inherit; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        let map, marker;
+        const defaultPos = [4.62699, -74.13852]; // Bogotá Kennedy
+
+        function initMap(lat, lng) {
+            const pos = [lat || defaultPos[0], lng || defaultPos[1]];
+            map = L.map('map', { zoomControl: false }).setView(pos, 17);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            marker = L.marker(pos, { draggable: true }).addTo(map);
+
+            marker.on('dragend', function() {
+                const p = marker.getLatLng();
+                window.parent.postMessage({ type: 'PICKER_MOVE', lat: p.lat, lng: p.lng }, '*');
+            });
+
+            map.on('click', function(e) {
+                marker.setLatLng(e.latlng);
+                window.parent.postMessage({ type: 'PICKER_MOVE', lat: e.latlng.lat, lng: e.latlng.lng }, '*');
+            });
+        }
+
+        window.addEventListener('message', function(e) {
+            if (e.data.type === 'INIT_PICKER') {
+                if (!map) initMap(e.data.lat, e.data.lng);
+            }
+            if (e.data.type === 'MOVE_TO') {
+                if (map && marker) {
+                    const pos = [e.data.lat, e.data.lng];
+                    map.setView(pos, 18);
+                    marker.setLatLng(pos);
+                    window.parent.postMessage({ type: 'PICKER_MOVE', lat: e.data.lat, lng: e.data.lng }, '*');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
