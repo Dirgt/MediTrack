@@ -64,7 +64,7 @@ export default function GuardarUbicacionModal({ cliente, usuarioId, onClose, onS
 
   const handleConfirmar = async () => {
     setLoading(true);
-    const res = await guardarUbicacionCliente(cliente.id || cliente.nombre, pos.lat, pos.lng, usuarioId);
+    const res = await guardarUbicacionCliente(cliente.id || cliente.nombre, pos.lat, pos.lng, direccionBusqueda, usuarioId);
     if (res.success) {
       onSaved(res.cliente);
     } else {
