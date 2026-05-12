@@ -398,6 +398,9 @@ export default function MisPedidos() {
 
   const [clientesUnicos, setClientesUnicos] = useState([]);
 
+  // Contadores globales (independientes de la paginación)
+  const [contadoresGlobales, setContadoresGlobales] = useState({ total: 0, pendientes: 0, enRuta: 0, entregados: 0 });
+
   // ── Buscador rápido (hooks SIEMPRE al inicio, antes de cualquier return) ──
   const [busqueda, setBusqueda] = useState('');
   const searchRef = useRef(null);
@@ -418,7 +421,47 @@ export default function MisPedidos() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  // ── Fetch pedidos ──
+  // ── Función auxiliar para aplicar filtros comunes (fecha, vendedor, cliente) ──
+  const aplicarFiltrosBase = useCallback((q) => {
+    if (!isAdmin) {
+      q = q.eq('vendedor_id', user.id);
+    } else if (filtroVendedor !== 'todos') {
+      q = q.eq('vendedor_id', filtroVendedor);
+    }
+    if (filtroCliente !== 'todos') {
+      q = q.eq('cliente_nombre', filtroCliente);
+    }
+    if (filtroRango === 'personalizado') {
+      if (fechaDesde) q = q.gte('creado_en', new Date(fechaDesde).toISOString());
+      if (fechaHasta) {
+        const hasta = new Date(fechaHasta);
+        hasta.setDate(hasta.getDate() + 1);
+        q = q.lt('creado_en', hasta.toISOString());
+      }
+    } else {
+      const rango = getRangoFecha(filtroRango);
+      if (rango) q = q.gte('creado_en', rango.desde.toISOString());
+    }
+    return q;
+  }, [user, isAdmin, filtroVendedor, filtroCliente, filtroRango, fechaDesde, fechaHasta]);
+
+  // ── Fetch contadores globales (consulta ligera, sin paginación) ──
+  const fetchContadores = useCallback(async () => {
+    if (!user) return;
+    let q = supabase.from('orders').select('estado');
+    q = aplicarFiltrosBase(q);
+    const { data } = await q;
+    if (data) {
+      setContadoresGlobales({
+        total: data.length,
+        pendientes: data.filter(p => p.estado === 'pendiente').length,
+        enRuta: data.filter(p => p.estado === 'en_camino').length,
+        entregados: data.filter(p => p.estado === 'entregado').length,
+      });
+    }
+  }, [user, aplicarFiltrosBase]);
+
+  // ── Fetch pedidos (con paginación) ──
   const fetchPedidos = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -433,35 +476,14 @@ export default function MisPedidos() {
                repartidor:profiles!orders_repartidor_id_fkey(nombre_completo)`, { count: 'exact' })
       .order('creado_en', { ascending: false });
 
-    // Filtros
-    if (!isAdmin) {
-      q = q.eq('vendedor_id', user.id);
-    } else if (filtroVendedor !== 'todos') {
-      q = q.eq('vendedor_id', filtroVendedor);
-    }
+    // Aplicar filtros comunes
+    q = aplicarFiltrosBase(q);
 
+    // Filtro de estado (solo para la consulta paginada)
     if (filtroEstado === 'rechazos') {
       q = q.in('estado', ['rechazado_puerta', 'cerrado_sin_entrega']);
     } else if (filtroEstado !== 'todos') {
       q = q.eq('estado', filtroEstado);
-    }
-
-    if (filtroCliente !== 'todos') {
-      q = q.eq('cliente_nombre', filtroCliente);
-    }
-
-    // Filtros de fecha
-    if (filtroRango === 'personalizado') {
-      if (fechaDesde) q = q.gte('creado_en', new Date(fechaDesde).toISOString());
-      if (fechaHasta) {
-        // Incluir el día completo de hasta
-        const hasta = new Date(fechaHasta);
-        hasta.setDate(hasta.getDate() + 1);
-        q = q.lt('creado_en', hasta.toISOString());
-      }
-    } else {
-      const rango = getRangoFecha(filtroRango);
-      if (rango) q = q.gte('creado_en', rango.desde.toISOString());
     }
 
     // Paginación
@@ -475,7 +497,7 @@ export default function MisPedidos() {
       setTotalRegistros(count || 0);
     }
     setLoading(false);
-  }, [user, isAdmin, filtroEstado, filtroRango, filtroVendedor, filtroCliente, pagina, porPagina, fechaDesde, fechaHasta]);
+  }, [user, aplicarFiltrosBase, filtroEstado, pagina, porPagina]);
 
   // NUEVO: Manejar apertura directa desde URL (ej. desde el Calendario)
   useEffect(() => {
@@ -540,14 +562,16 @@ export default function MisPedidos() {
   useEffect(() => {
     if (!user) { setLoading(false); return; }
     fetchPedidos();
+    fetchContadores();
     const channel = supabase.channel('pedidos_rt_v4')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
         fetchPedidos();
+        fetchContadores();
         fetchClientes();
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [user, fetchPedidos, fetchClientes]);
+  }, [user, fetchPedidos, fetchContadores, fetchClientes]);
 
   // ── Modificar Filtros Visuales ──
   const FILTROS_ESTADO = [
@@ -597,9 +621,8 @@ export default function MisPedidos() {
 
   if (!user) return <div style={{textAlign:'center', marginTop:100}}>Cargando...</div>;
 
-  const pendientes = pedidosFiltrados.filter(p => p.estado === 'pendiente').length;
-  const enRuta     = pedidosFiltrados.filter(p => p.estado === 'en_camino').length;
-  const entregados = pedidosFiltrados.filter(p => p.estado === 'entregado').length;
+  // Usar contadores globales (no dependen de la página actual)
+  const { total: totalGlobal, pendientes, enRuta, entregados } = contadoresGlobales;
 
   return (
     <div style={{ paddingBottom:40 }}>
@@ -626,7 +649,7 @@ export default function MisPedidos() {
 
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))', gap:10 }}>
             {[
-              { label:'Total Búsqueda', value: totalRegistros, icon:'📦' },
+              { label:'Total Pedidos', value: totalGlobal, icon:'📦' },
               { label:'Pendientes', value: pendientes, icon:'⏳' },
               { label:'En Camino',   value: enRuta,    icon:'🚚' },
               { label:'Entregados', value: entregados, icon:'✅' },
