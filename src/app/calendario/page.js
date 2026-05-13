@@ -17,6 +17,30 @@ const ESTADO = {
   cancelado:            { label:'Cancelado',            emoji:'❌', color:'#dc2626', bg:'rgba(220,38,38,0.08)' },
 };
 
+// ── Paleta de color por vendedor (hash determinístico → HSL corporativo) ──
+function hashStr(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+// Paleta armoniosa con el verde corporativo (#084032)
+const VENDOR_PALETTE = [
+  { bg:'rgba(13,148,136,0.14)',  border:'#0d9488', text:'#0f766e'  }, // Teal (análogo al verde)
+  { bg:'rgba(30,64,175,0.12)',   border:'#1e40af', text:'#1e3a8a'  }, // Azul marino corporativo
+  { bg:'rgba(217,119,6,0.14)',   border:'#d97706', text:'#92400e'  }, // Dorado cálido
+  { bg:'rgba(101,163,13,0.14)',  border:'#65a30d', text:'#3f6212'  }, // Oliva (verde-amarillo)
+  { bg:'rgba(71,85,105,0.14)',   border:'#475569', text:'#1e293b'  }, // Pizarra corporativo
+  { bg:'rgba(180,83,9,0.12)',    border:'#b45309', text:'#78350f'  }, // Terracota cálido
+  { bg:'rgba(8,145,178,0.14)',   border:'#0891b2', text:'#164e63'  }, // Cian profundo
+  { bg:'rgba(107,114,128,0.14)', border:'#6b7280', text:'#374151'  }, // Gris neutro elegante
+];
+
+function getVendorColor(nombre) {
+  if (!nombre) return VENDOR_PALETTE[0];
+  return VENDOR_PALETTE[hashStr(nombre) % VENDOR_PALETTE.length];
+}
+
 export default function Calendario() {
   const { user, profile } = useUser();
   const router = useRouter();
@@ -137,6 +161,18 @@ export default function Calendario() {
 
   const monthName = currentDate.toLocaleString('es-CO', { month: 'long', year: 'numeric' });
 
+  // Construir leyenda de vendedores únicos del mes
+  const vendedoresUnicos = [];
+  const seenVendors = new Set();
+  pedidos.forEach(p => {
+    const nombre = p.profiles?.nombre_completo || 'Sin asignar';
+    if (!seenVendors.has(nombre)) {
+      seenVendors.add(nombre);
+      vendedoresUnicos.push({ nombre, color: getVendorColor(nombre) });
+    }
+  });
+  const esAdmin = profile.role === 'admin';
+
   return (
     <div style={{ paddingBottom: 100 }}>
       {/* HEADER HERO */}
@@ -172,6 +208,26 @@ export default function Calendario() {
             }}
           />
         </div>
+        {/* Leyenda de vendedores (solo admin) */}
+        {esAdmin && vendedoresUnicos.length > 0 && (
+          <div style={{ marginTop:16, display:'flex', flexWrap:'wrap', gap:8 }}>
+            {vendedoresUnicos.map(v => (
+              <div key={v.nombre} style={{
+                display:'flex', alignItems:'center', gap:6,
+                background:'rgba(255,255,255,0.12)', borderRadius:20,
+                padding:'5px 12px', backdropFilter:'blur(8px)'
+              }}>
+                <div style={{
+                  width:10, height:10, borderRadius:'50%',
+                  background: v.color.border, flexShrink:0
+                }}/>
+                <span style={{ fontSize:12, fontWeight:700, color:'white', opacity:0.95 }}>
+                  {v.nombre.split(' ')[0]}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* GRID CALENDARIO */}
@@ -228,19 +284,38 @@ export default function Calendario() {
                     <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1 }}>
                       {pedidosDelDia.map(p => {
                         const est = ESTADO[p.estado] || ESTADO.pendiente;
+                        const vendorNombre = p.profiles?.nombre_completo || 'Sin asignar';
+                        const vendorColor = esAdmin ? getVendorColor(vendorNombre) : null;
+                        const initial = vendorNombre.charAt(0).toUpperCase();
                         return (
                           <div 
                             key={p.id}
                             onClick={() => setSelectedPedido(p)}
                             style={{
-                              background: est.bg, border:`1px solid ${est.color}40`, borderRadius:4, padding:'4px',
-                              fontSize:9, fontWeight:700, color: est.color, cursor:'pointer',
-                              whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis',
-                              boxShadow:'0 1px 2px rgba(0,0,0,0.05)'
+                              background: vendorColor ? vendorColor.bg : est.bg,
+                              border: `1px solid ${vendorColor ? vendorColor.border + '60' : est.color + '40'}`,
+                              borderLeft: `3px solid ${vendorColor ? vendorColor.border : est.color}`,
+                              borderRadius:4, padding:'3px 4px',
+                              fontSize:9, fontWeight:700,
+                              color: vendorColor ? vendorColor.text : est.color,
+                              cursor:'pointer',
+                              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                              boxShadow:'0 1px 2px rgba(0,0,0,0.05)',
+                              display:'flex', alignItems:'center', gap:3,
                             }}
-                            title={`${p.cliente_nombre} - ${p.localidad}`}
+                            title={`${vendorNombre} — ${p.cliente_nombre} (${est.label})`}
                           >
-                            {est.emoji} #{p.numero_pedido} {p.cliente_nombre}
+                            {esAdmin && (
+                              <span style={{
+                                flexShrink:0, width:12, height:12, borderRadius:'50%',
+                                background: vendorColor.border, color:'white',
+                                fontSize:7, fontWeight:900, display:'flex',
+                                alignItems:'center', justifyContent:'center', lineHeight:1
+                              }}>{initial}</span>
+                            )}
+                            <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>
+                              {est.emoji} #{p.numero_pedido} {p.cliente_nombre}
+                            </span>
                           </div>
                         )
                       })}
@@ -289,6 +364,22 @@ export default function Calendario() {
                       📍 {selectedPedido.localidad || 'N/A'}
                    </div>
                 </div>
+                {esAdmin && selectedPedido.profiles?.nombre_completo && (() => {
+                  const vc = getVendorColor(selectedPedido.profiles.nombre_completo);
+                  return (
+                    <div style={{ background: vc.bg, padding:12, borderRadius:16, border:`1px solid ${vc.border}40`, gridColumn:'1 / -1' }}>
+                      <div style={{ fontSize:11, color: vc.text, fontWeight:800, textTransform:'uppercase', marginBottom:4 }}>👤 Vendedor</div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <div style={{ width:28, height:28, borderRadius:'50%', background: vc.border, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:13, fontWeight:900 }}>
+                          {selectedPedido.profiles.nombre_completo.charAt(0).toUpperCase()}
+                        </div>
+                        <span style={{ fontWeight:800, color: vc.text, fontSize:14 }}>
+                          {selectedPedido.profiles.nombre_completo}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Items */}
