@@ -399,7 +399,10 @@ export default function MisPedidos() {
   const [clientesUnicos, setClientesUnicos] = useState([]);
 
   // Contadores globales (independientes de la paginación)
-  const [contadoresGlobales, setContadoresGlobales] = useState({ total: 0, pendientes: 0, enRuta: 0, entregados: 0 });
+  const [contadoresGlobales, setContadoresGlobales] = useState({
+    total: 0, pendientes: 0, alistando: 0, facturando: 0,
+    enRuta: 0, entregados: 0, rechazados: 0, reintentos: 0, cancelados: 0
+  });
 
   // ── Buscador rápido (hooks SIEMPRE al inicio, antes de cualquier return) ──
   const [busqueda, setBusqueda] = useState('');
@@ -445,18 +448,24 @@ export default function MisPedidos() {
     return q;
   }, [user, isAdmin, filtroVendedor, filtroCliente, filtroRango, fechaDesde, fechaHasta]);
 
-  // ── Fetch contadores globales (consulta ligera, sin paginación) ──
+  // ── Fetch contadores globales (siempre totales reales, sin filtro de estado) ──
   const fetchContadores = useCallback(async () => {
     if (!user) return;
     let q = supabase.from('orders').select('estado');
     q = aplicarFiltrosBase(q);
+    // NO se aplica filtroEstado — las cards muestran siempre el panorama global
     const { data } = await q;
     if (data) {
       setContadoresGlobales({
-        total: data.length,
+        total:      data.length,
         pendientes: data.filter(p => p.estado === 'pendiente').length,
-        enRuta: data.filter(p => p.estado === 'en_camino').length,
+        alistando:  data.filter(p => p.estado === 'alistando').length,
+        facturando: data.filter(p => p.estado === 'facturando').length,
+        enRuta:     data.filter(p => p.estado === 'en_camino').length,
         entregados: data.filter(p => p.estado === 'entregado').length,
+        rechazados: data.filter(p => p.estado === 'rechazado_puerta').length,
+        reintentos: data.filter(p => p.estado === 'programado_reintento').length,
+        cancelados: data.filter(p => p.estado === 'cancelado').length,
       });
     }
   }, [user, aplicarFiltrosBase]);
@@ -479,10 +488,8 @@ export default function MisPedidos() {
     // Aplicar filtros comunes
     q = aplicarFiltrosBase(q);
 
-    // Filtro de estado (solo para la consulta paginada)
-    if (filtroEstado === 'rechazos') {
-      q = q.in('estado', ['rechazado_puerta', 'cerrado_sin_entrega']);
-    } else if (filtroEstado !== 'todos') {
+    // Filtro de estado
+    if (filtroEstado !== 'todos') {
       q = q.eq('estado', filtroEstado);
     }
 
@@ -575,14 +582,15 @@ export default function MisPedidos() {
 
   // ── Modificar Filtros Visuales ──
   const FILTROS_ESTADO = [
-    { id:'todos',      label:'Todos'       },
-    { id:'pendiente',  label:'Pendientes', icon: '⏳' },
-    { id:'alistando',  label:'Alistando',  icon: '📦' },
-    { id:'facturando', label:'Facturando', icon: '🧾' },
-    { id:'en_camino',  label:'En Camino',  icon: '🚚' },
-    { id:'entregado',  label:'Entregados', icon: '✅' },
-    { id:'rechazos',   label:'Rechazos',   icon: '🚫' },
-    { id:'cancelado',  label:'Cancelados', icon: '❌' },
+    { id:'todos',                label:'Todos'             },
+    { id:'pendiente',            label:'Pendientes',       icon: '⏳' },
+    { id:'alistando',            label:'Alistando',        icon: '📦' },
+    { id:'facturando',           label:'Facturando',       icon: '🧾' },
+    { id:'en_camino',            label:'En Camino',        icon: '🚚' },
+    { id:'entregado',            label:'Entregados',       icon: '✅' },
+    { id:'rechazado_puerta',     label:'Rechazados',       icon: '🚫' },
+    { id:'programado_reintento', label:'Reintentos',       icon: '🔄' },
+    { id:'cancelado',            label:'Cancelados',       icon: '❌' },
   ];
 
   // Acciones
@@ -621,8 +629,8 @@ export default function MisPedidos() {
 
   if (!user) return <div style={{textAlign:'center', marginTop:100}}>Cargando...</div>;
 
-  // Usar contadores globales (no dependen de la página actual)
-  const { total: totalGlobal, pendientes, enRuta, entregados } = contadoresGlobales;
+  // Contadores globales
+  const { total: totalGlobal, pendientes, alistando, facturando, enRuta, entregados, rechazados, reintentos, cancelados } = contadoresGlobales;
 
   return (
     <div style={{ paddingBottom:40 }}>
@@ -647,17 +655,42 @@ export default function MisPedidos() {
             </h1>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))', gap:10 }}>
+          {/* Fila principal: Total + Flujo feliz */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(90px, 1fr))', gap:8 }}>
             {[
-              { label:'Total Pedidos', value: totalGlobal, icon:'📦' },
-              { label:'Pendientes', value: pendientes, icon:'⏳' },
-              { label:'En Camino',   value: enRuta,    icon:'🚚' },
-              { label:'Entregados', value: entregados, icon:'✅' },
+              { label:'Total',      value: totalGlobal, icon:'📦', accent:'rgba(255,255,255,0.18)' },
+              { label:'Pendientes', value: pendientes,  icon:'⏳', accent:'rgba(255,255,255,0.12)' },
+              { label:'Alistando',  value: alistando,   icon:'📦', accent:'rgba(16,185,129,0.15)' },
+              { label:'Facturando', value: facturando,  icon:'🧾', accent:'rgba(16,185,129,0.20)' },
+              { label:'En Camino',  value: enRuta,      icon:'🚚', accent:'rgba(16,185,129,0.25)' },
+              { label:'Entregados', value: entregados,  icon:'✅', accent:'rgba(16,185,129,0.35)' },
             ].map(s => (
-              <div key={s.label} style={{ background:'rgba(255,255,255,0.22)', borderRadius:20, padding:'14px 8px', textAlign:'center', backdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.2)' }}>
-                <div style={{ fontSize:20, marginBottom:2 }}>{s.icon}</div>
-                <div style={{ color:'white', fontSize:22, fontWeight:900 }}>{s.value}</div>
-                <div style={{ color:'white', fontSize:10, fontWeight:800, opacity:0.9 }}>{s.label}</div>
+              <div key={s.label} style={{
+                background: s.accent, borderRadius:16, padding:'12px 6px', textAlign:'center',
+                backdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.12)',
+                transition:'transform .2s'
+              }}>
+                <div style={{ fontSize:16, marginBottom:1 }}>{s.icon}</div>
+                <div style={{ color:'white', fontSize:20, fontWeight:900, lineHeight:1.2 }}>{s.value}</div>
+                <div style={{ color:'rgba(255,255,255,0.85)', fontSize:9, fontWeight:700, textTransform:'uppercase', letterSpacing:0.5 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Fila secundaria: Excepciones */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginTop:8 }}>
+            {[
+              { label:'Rechazados', value: rechazados, icon:'🚫', accent:'rgba(255,255,255,0.08)' },
+              { label:'Reintentos', value: reintentos, icon:'🔄', accent:'rgba(255,255,255,0.08)' },
+              { label:'Cancelados', value: cancelados, icon:'❌', accent:'rgba(255,255,255,0.08)' },
+            ].map(s => (
+              <div key={s.label} style={{
+                background: s.accent, borderRadius:14, padding:'10px 4px', textAlign:'center',
+                backdropFilter:'blur(12px)', border:'1px solid rgba(255,255,255,0.06)',
+              }}>
+                <div style={{ fontSize:13 }}>{s.icon}</div>
+                <div style={{ color:'rgba(255,255,255,0.9)', fontSize:16, fontWeight:900, lineHeight:1.2 }}>{s.value}</div>
+                <div style={{ color:'rgba(255,255,255,0.6)', fontSize:8, fontWeight:700, textTransform:'uppercase', letterSpacing:0.3 }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -772,26 +805,43 @@ export default function MisPedidos() {
           </div>
         )}
 
-        {/* Chips de Estados Generales */}
-        <div className="hide-scrollbar" style={{ display:'flex', gap:10, overflowX:'auto', WebkitOverflowScrolling:'touch', paddingBottom:8, marginTop:-4 }}>
-          {FILTROS_ESTADO.map(f => {
-             const isSel = filtroEstado === f.id;
-             return (
-               <button key={f.id} onClick={()=>{ setFiltro(f.id); setPagina(1); }} style={{
-                 display:'flex', alignItems:'center', gap:6, flexShrink:0,
-                 padding:'10px 16px', borderRadius:20, border: isSel ? '2px solid #0F6E56' : '2px solid transparent',
-                 background: isSel ? 'rgba(15,110,86,0.15)' : '#ffffff',
-                 boxShadow: '0 4px 10px rgba(0,0,0,0.04)', color: isSel ? '#0F6E56' : '#64748b',
-                 fontSize:14, fontWeight:800, transition:'all .2s', cursor:'pointer'
-               }}>
-                 {f.icon && <span>{f.icon}</span>}
-                 {f.label}
-               </button>
-             );
-          })}
+        {/* Chips de Estados Generales - Scrollable con degradado */}
+        <div style={{ position:'relative', marginTop:-4 }}>
+          <div className="filter-scroll" style={{
+            display:'flex', gap:8, overflowX:'auto', WebkitOverflowScrolling:'touch',
+            paddingBottom:8, paddingRight:20, scrollBehavior:'smooth'
+          }}>
+            {FILTROS_ESTADO.map(f => {
+               const isSel = filtroEstado === f.id;
+               return (
+                 <button key={f.id} onClick={()=>{ setFiltro(f.id); setPagina(1); }} style={{
+                   display:'flex', alignItems:'center', gap:5, flexShrink:0, whiteSpace:'nowrap',
+                   padding:'9px 14px', borderRadius:20,
+                   border: isSel ? '2px solid #0F6E56' : '2px solid #e2e8f0',
+                   background: isSel ? '#084032' : '#ffffff',
+                   boxShadow: isSel ? '0 4px 12px rgba(8,64,50,0.25)' : '0 2px 6px rgba(0,0,0,0.04)',
+                   color: isSel ? 'white' : '#475569',
+                   fontSize:13, fontWeight:700, transition:'all .2s', cursor:'pointer'
+                 }}>
+                   {f.icon && <span style={{ fontSize:14 }}>{f.icon}</span>}
+                   {f.label}
+                 </button>
+               );
+            })}
+          </div>
+          {/* Degradado derecho que indica más contenido */}
+          <div style={{
+            position:'absolute', right:0, top:0, bottom:8, width:40,
+            background:'linear-gradient(to left, white 30%, transparent)',
+            pointerEvents:'none'
+          }}/>
         </div>
 
         <style>{`
+          .filter-scroll::-webkit-scrollbar { height: 3px; }
+          .filter-scroll::-webkit-scrollbar-track { background: transparent; }
+          .filter-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+          .filter-scroll::-webkit-scrollbar-thumb:hover { background: #0F6E56; }
           .hide-scrollbar::-webkit-scrollbar { display: none; }
           .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         `}</style>
