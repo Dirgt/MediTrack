@@ -30,7 +30,7 @@ export default function VistaReparto() {
       // 1. Cargar pedidos
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select('id, cliente_nombre, localidad, tipo_pago, estado, actualizado_en, fecha_entrega, order_items(medicamento_nombre, cantidad)')
+        .select('id, cliente_nombre, localidad, tipo_pago, estado, actualizado_en, fecha_entrega, observaciones, order_items(medicamento_nombre, cantidad)')
         .eq('repartidor_id', user.id)
         .eq('estado', 'en_camino')
         .order('actualizado_en', { ascending: false });
@@ -203,6 +203,14 @@ export default function VistaReparto() {
                   </div>
                 ))}
               </div>
+
+              {/* Observaciones del pedido */}
+              {p.observaciones && (
+                <div style={{ background: '#fffbeb', borderRadius: 16, padding: 12, marginBottom: 12, border: '1px solid #fde68a' }}>
+                  <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 800, color: '#b45309', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>⚠️ Observaciones</p>
+                  <p style={{ margin: 0, fontSize: 14, color: '#92400e', fontWeight: 600, lineHeight: 1.4 }}>{p.observaciones}</p>
+                </div>
+              )}
 
               {/* Botones de Navegación y Ubicación */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>

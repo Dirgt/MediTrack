@@ -3,12 +3,49 @@
 import { useState, useRef, useEffect } from 'react';
 import { guardarUbicacionCliente } from '@/app/actions/location_actions';
 
+const DEFAULT_LAT = 4.62699;
+const DEFAULT_LNG = -74.13852;
+
 export default function GuardarUbicacionModal({ cliente, usuarioId, onClose, onSaved }) {
-  const [pos, setPos] = useState({ lat: cliente.latitud || 4.62699, lng: cliente.longitud || -74.13852 });
+  const [pos, setPos] = useState({ lat: cliente.latitud || DEFAULT_LAT, lng: cliente.longitud || DEFAULT_LNG });
   const [loading, setLoading] = useState(false);
+  const [gpsLoading, setGpsLoading] = useState(true);
   const [direccionBusqueda, setDireccionBusqueda] = useState(cliente.direccion || '');
   const [buscandoDireccion, setBuscandoDireccion] = useState(false);
   const iframeRef = useRef(null);
+  const gpsObtained = useRef(false);
+
+  // Obtener ubicación GPS real al abrir el modal
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setGpsLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newLat = position.coords.latitude;
+        const newLng = position.coords.longitude;
+        gpsObtained.current = true;
+        setPos({ lat: newLat, lng: newLng });
+
+        // Si el iframe ya cargó, mover el mapa a la posición GPS
+        if (iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage({
+            type: 'MOVE_TO',
+            lat: newLat,
+            lng: newLng
+          }, '*');
+        }
+        setGpsLoading(false);
+      },
+      (error) => {
+        console.warn('No se pudo obtener GPS:', error.message);
+        setGpsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, []);
 
   useEffect(() => {
     const handleMessage = (e) => {
@@ -112,6 +149,20 @@ export default function GuardarUbicacionModal({ cliente, usuarioId, onClose, onS
           </button>
         </div>
 
+        {/* Indicador GPS */}
+        {gpsLoading && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', marginBottom: 10, background: '#eff6ff', borderRadius: 12, border: '1px solid #bfdbfe' }}>
+            <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(59,130,246,0.2)', borderTopColor: '#3b82f6', animation: 'spin 0.8s linear infinite' }} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb' }}>Obteniendo tu ubicación GPS...</span>
+          </div>
+        )}
+        {!gpsLoading && gpsObtained.current && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', marginBottom: 10, background: '#f0fdf4', borderRadius: 12, border: '1px solid #bbf7d0' }}>
+            <span style={{ fontSize: 14 }}>✅</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>Ubicación GPS obtenida — ajusta el pin si es necesario</span>
+          </div>
+        )}
+
         {/* MAPA PICKER */}
         <div style={{ height: 260, borderRadius: 24, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f1f5f9', marginBottom: 20 }}>
           <iframe 
@@ -141,6 +192,7 @@ export default function GuardarUbicacionModal({ cliente, usuarioId, onClose, onS
 
       <style>{`
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
