@@ -236,9 +236,10 @@ export default function Calendario() {
           <div style={{ textAlign:'center', color:'#94a3b8', fontWeight:600, padding:'40px 0' }}>Cargando calendario...</div>
         ) : (
           <div style={{ background:'white', borderRadius:24, boxShadow:'0 10px 40px rgba(0,0,0,0.06)', overflow:'hidden' }}>
-            
-            {/* Headers Dias */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', background:'#f8fafc', borderBottom:'1px solid #e2e8f0' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ minWidth: 800 }}>
+                {/* Headers Dias */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', background:'#f8fafc', borderBottom:'1px solid #e2e8f0' }}>
               {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
                 <div key={d} style={{ padding:'12px 4px', textAlign:'center', fontSize:12, fontWeight:800, color:'#64748b' }}>{d}</div>
               ))}
@@ -323,6 +324,8 @@ export default function Calendario() {
                   </div>
                 );
               })}
+            </div>
+              </div>
             </div>
 
           </div>
