@@ -174,7 +174,7 @@ export default function Calendario() {
   const esAdmin = profile.role === 'admin';
 
   return (
-    <div style={{ paddingBottom: 100 }}>
+    <div style={{ paddingBottom: 100, width: '100%', maxWidth: '100vw', boxSizing: 'border-box', overflowX: 'hidden' }}>
       {/* HEADER HERO */}
       <div style={{
         background: 'linear-gradient(135deg, #084032 0%, #0F6E56 100%)',
@@ -231,7 +231,7 @@ export default function Calendario() {
       </div>
 
       {/* GRID CALENDARIO */}
-      <div style={{ padding: '20px 16px' }}>
+      <div style={{ padding: '20px 16px', width: '100%', boxSizing: 'border-box' }}>
         {loading ? (
           <div style={{ textAlign:'center', color:'#94a3b8', fontWeight:600, padding:'40px 0' }}>Cargando calendario...</div>
         ) : (
