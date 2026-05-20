@@ -138,12 +138,12 @@ export default function DetallePedido({ params }) {
   const puedeEditar = !isAdmin && pedido.estado === 'pendiente';
 
   return (
-    <div style={{ paddingBottom:100 }}>
+    <div style={{ paddingBottom:100, background:'linear-gradient(135deg, #084032 0%, #0F6E56 50%)', minHeight:'100vh' }}>
       {/* ── HERO ── */}
       <div style={{
-        background:'linear-gradient(135deg, #084032 0%, #0F6E56 100%)',
-        padding:'32px 20px 80px', borderRadius:'0 0 40px 40px',
-        position:'relative', overflow:'hidden', marginBottom:-56,
+        background:'transparent',
+        padding:'32px 20px 60px',
+        position:'relative', overflow:'hidden',
       }}>
         <div style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }} />
         <div style={{ position:'relative', zIndex:1 }}>
@@ -168,7 +168,20 @@ export default function DetallePedido({ params }) {
         </div>
       </div>
 
-      <div style={{ padding:'0 16px', display:'flex', flexDirection:'column', gap:16 }}>
+      {/* ── CONTENT SHEET ── */}
+      <div style={{
+        background:'#f8fafc',
+        borderRadius:'32px 32px 0 0',
+        marginTop:-24,
+        position:'relative',
+        zIndex:10,
+        padding:'28px 16px 100px',
+        display:'flex',
+        flexDirection:'column',
+        gap:16,
+        minHeight:'60vh',
+        boxShadow:'0 -4px 24px rgba(0,0,0,0.08)',
+      }}>
 
         {/* SLA — Estado Operativo */}
         {!['entregado','cancelado','cerrado_sin_entrega'].includes(pedido.estado) && (

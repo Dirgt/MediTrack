@@ -110,13 +110,15 @@ export default function SLAIndicator({ pedido, compact = false }) {
   // ── Vista FULL (para la página de detalle del pedido) ─────────────────
   return (
     <div style={{
-      background:   sla.bg,
+      backgroundColor: '#ffffff',
+      backgroundImage: `linear-gradient(${sla.bg}, ${sla.bg})`,
       border:       `1.5px solid ${sla.border}`,
-      borderRadius: 20,
-      padding:      '16px 18px',
+      borderRadius: 24,
+      padding:      '20px',
       display:      'flex',
       alignItems:   'flex-start',
       gap:          14,
+      boxShadow:    '0 8px 24px rgba(0,0,0,0.05)',
       animation:    sla.pulso ? 'slaPulse 1.6s ease-in-out infinite' : 'none',
     }}>
       {/* Icono grande */}
