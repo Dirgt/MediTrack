@@ -101,13 +101,23 @@ export default function Navigation() {
     setNotificaciones(data || []);
     setLoadingNotifs(false);
 
-    // Mark all as read
-    const unreadIds = (data || []).filter(n => !n.leida).map(n => n.id);
-    if (unreadIds.length > 0) {
-      await supabase.from('notificaciones').update({ leida: true }).in('id', unreadIds);
-      setUnreadCount(0);
-    }
-  }, [showNotifDrawer, profile?.id]);
+    // Mark all as read efficiently
+    setUnreadCount(currentCount => {
+      if (currentCount > 0) {
+        let updateQuery = supabase
+          .from('notificaciones')
+          .update({ leida: true })
+          .eq('user_id', profile.id)
+          .eq('leida', false);
+          
+        if (esRepartidor) {
+          updateQuery = updateQuery.eq('tipo', 'asignacion_reparto');
+        }
+        updateQuery.then(); // Ejecutar en background
+      }
+      return 0; // Actualizar UI de inmediato
+    });
+  }, [showNotifDrawer, profile?.id, esRepartidor]);
 
   if (pathname === '/login') return null;
 
