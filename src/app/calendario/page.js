@@ -271,7 +271,7 @@ export default function Calendario() {
                 return (
                   <div key={dateKey} style={{ 
                     borderRight:'1px solid #f1f5f9', borderBottom:'1px solid #f1f5f9', minHeight:100, 
-                    padding:'6px', background: bgDay, display:'flex', flexDirection:'column'
+                    padding:'6px', background: bgDay, display:'flex', flexDirection:'column', minWidth: 0
                   }}>
                     <div style={{ 
                       fontSize:12, fontWeight:800, textAlign:'center', marginBottom:6,
@@ -282,7 +282,7 @@ export default function Calendario() {
                       {date.getDate()}
                     </div>
 
-                    <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1 }}>
+                    <div style={{ display:'flex', flexDirection:'column', gap:4, flex:1, minWidth: 0 }}>
                       {pedidosDelDia.map(p => {
                         const est = ESTADO[p.estado] || ESTADO.pendiente;
                         const vendorNombre = p.profiles?.nombre_completo || 'Sin asignar';
