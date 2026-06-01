@@ -73,8 +73,8 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
       const nuevosIntentos = (order.intentos_entrega || 0) + 1;
       update.intentos_entrega = nuevosIntentos;
 
-      // #5: Si se alcanza el límite de intentos, cerrar automáticamente
-      if (nuevosIntentos >= MAX_INTENTOS) {
+      // #5: Si se supera el límite de intentos, cerrar automáticamente
+      if (nuevosIntentos > MAX_INTENTOS) {
         update.estado = 'cerrado_sin_entrega';
         update.motivo_rechazo = `${opciones.motivo_rechazo || 'Sin motivo'} (Cierre automático — ${MAX_INTENTOS} intentos alcanzados)`;
         // Registrar en historial el cierre automático
