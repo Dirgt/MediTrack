@@ -102,6 +102,7 @@ export default function ListaPrecios() {
           const tieneDesc = p.precio_descuento > 0 && p.precio_descuento < p.precio_normal;
           return [
             p.producto,
+            p.marca || '--',
             formatearPrecio(p.precio_normal),
             tieneDesc ? formatearPrecio(p.precio_descuento) : '--',
             p.agotado ? 'Agotado' : 'Disponible'
@@ -110,7 +111,7 @@ export default function ListaPrecios() {
 
         autoTable(doc, {
           startY: 28,
-          head: [['Producto', 'Sin Descuento', 'Con Descuento', 'Estado']],
+          head: [['Producto', 'Marca', 'Sin Descuento', 'Con Descuento', 'Estado']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [15, 110, 86] },
@@ -206,6 +207,7 @@ export default function ListaPrecios() {
             <thead>
               <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
                 <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Producto</th>
+                <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Marca</th>
                 <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Sin Descuento</th>
                 <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Con Descuento</th>
                 {isAdmin && <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Acciones</th>}
@@ -225,6 +227,9 @@ export default function ListaPrecios() {
                         {prod.agotado && <span style={{ background: '#fef2f2', color: '#ef4444', fontSize: 9, fontWeight: 900, padding: '2px 6px', borderRadius: 4, textTransform: 'uppercase' }}>Agotado</span>}
                         <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--brand-dark)' }}>{prod.producto}</span>
                       </div>
+                    </td>
+                    <td style={{ padding: '16px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>{prod.marca || '--'}</span>
                     </td>
                     <td style={{ padding: '16px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
                       <span style={{ fontSize: 15, fontWeight: 700, color: tieneDescuento ? '#64748b' : 'var(--brand-dark)' }}>{formatearPrecio(prod.precio_normal)}</span>
@@ -289,6 +294,7 @@ export default function ListaPrecios() {
 
 function ModalPrecio({ productoBase, onClose, onSuccess }) {
   const [nombre, setNombre] = useState(productoBase?.producto || '');
+  const [marca, setMarca] = useState(productoBase?.marca || '');
   const [precioNormal, setPrecioNormal] = useState(productoBase?.precio_normal || '');
   const [precioDescuento, setPrecioDescuento] = useState(productoBase?.precio_descuento || '');
   const [agotado, setAgotado] = useState(productoBase?.agotado || false);
@@ -307,6 +313,7 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
 
     const payload = {
       producto: nombre.trim(),
+      marca: marca.trim() || null,
       precio_normal: parseFloat(precioNormal),
       precio_descuento: precioDescuento ? parseFloat(precioDescuento) : null,
       agotado
@@ -336,7 +343,12 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--brand-dark)', marginBottom: 6, textTransform: 'uppercase' }}>Nombre del Producto</label>
-            <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Dolex Forte" style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px', borderRadius: 14, border: '2px solid rgba(15,110,86,0.15)', background: 'rgba(15,110,86,0.03)', fontSize: 15, fontWeight: 600, outline: 'none', color: 'var(--brand-dark)' }} />
+            <input type="text" value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Dolex Forte Tabletas" style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px', borderRadius: 14, border: '2px solid rgba(15,110,86,0.15)', background: 'rgba(15,110,86,0.03)', fontSize: 15, fontWeight: 600, outline: 'none', color: 'var(--brand-dark)' }} />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--brand-dark)', marginBottom: 6, textTransform: 'uppercase' }}>Marca</label>
+            <input type="text" value={marca} onChange={e => setMarca(e.target.value)} placeholder="Ej: Bayer" style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px', borderRadius: 14, border: '2px solid rgba(15,110,86,0.15)', background: 'rgba(15,110,86,0.03)', fontSize: 15, fontWeight: 600, outline: 'none', color: 'var(--brand-dark)' }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
