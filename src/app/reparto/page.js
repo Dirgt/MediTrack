@@ -351,7 +351,22 @@ function ModalRecaudo({ pedido, onConfirm, onCancel }) {
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', padding: 20 }}>
       <div style={{ width: '100%', maxWidth: 400, background: 'white', borderRadius: 28, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.2)', animation: 'fadeIn 0.3s' }}>
         <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, color: '#084032', textAlign: 'center' }}>Finalizar Entrega</h3>
-        <p style={{ margin: '0 0 20px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>{pedido.cliente_nombre}</p>
+        <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>{pedido.cliente_nombre}</p>
+
+        {/* Productos del pedido */}
+        {pedido.order_items?.length > 0 && (
+          <div style={{ background: '#f0fdf4', borderRadius: 14, padding: '12px 14px', marginBottom: 16, border: '1px solid #bbf7d0' }}>
+            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 900, color: '#15803d', textTransform: 'uppercase' }}>📦 Productos a entregar</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {pedido.order_items.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#084032' }}>• {item.medicamento_nombre}</span>
+                  <span style={{ fontSize: 13, fontWeight: 900, color: '#0F6E56', background: 'rgba(15,110,86,0.08)', padding: '2px 10px', borderRadius: 8 }}>x{item.cantidad}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#084032', marginBottom: 8 }}>Método de Pago</label>
