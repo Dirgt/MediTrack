@@ -18,6 +18,7 @@ export default function VistaReparto() {
   const [toast, setToast] = useState(null);
   const [activeTab, setActiveTab] = useState('lista');
   const [isClient, setIsClient] = useState(false);
+  const [ordenRuta, setOrdenRuta] = useState([]);
 
   useEffect(() => { setIsClient(true); }, []);
 
@@ -112,6 +113,21 @@ export default function VistaReparto() {
     fetchPedidos(); // Refrescar para actualizar ubicaciones
   };
 
+  // Recibe el orden óptimo calculado por OSRM desde MapaReparto
+  const handleOrdenCalculado = (orderedClientIds = []) => {
+    setOrdenRuta(orderedClientIds);
+  };
+
+  // Ordena los pedidos según el orden de ruta calculado
+  const pedidosOrdenados = [...pedidos].sort((a, b) => {
+    const ia = ordenRuta.indexOf(a.cliente_id);
+    const ib = ordenRuta.indexOf(b.cliente_id);
+    if (ia === -1 && ib === -1) return 0;
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
   return (
     <div style={{ padding: '20px', paddingBottom: 100, minHeight: '100vh', background: '#f8fafc' }}>
       <header style={{ marginBottom: 20 }}>
@@ -158,6 +174,7 @@ export default function VistaReparto() {
           pedidos={pedidos}
           usuarioId={user.id}
           onUbicacionGuardada={handleUbicacionGuardada}
+          onOrdenCalculado={handleOrdenCalculado}
         />
       )}
 
@@ -178,19 +195,29 @@ export default function VistaReparto() {
         </div>
       ) : activeTab === 'lista' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {pedidos.map(p => (
+          {pedidosOrdenados.map(p => {
+            const posRuta = ordenRuta.indexOf(p.cliente_id);
+            const numRuta = posRuta !== -1 ? posRuta + 1 : null;
+            return (
             <div key={p.id} style={{ 
               background: 'white', borderRadius: 24, padding: 20, 
               boxShadow: '0 4px 12px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' 
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#084032' }}>{p.cliente_nombre}</h3>
-                  <p style={{ margin: '4px 0 0', fontSize: 13, color: '#0d9488', fontWeight: 700 }}>📍 {p.localidad || 'Sin localidad'}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {numRuta && (
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 900, flexShrink: 0, boxShadow: '0 4px 10px rgba(59,130,246,0.4)' }}>
+                      {numRuta}
+                    </div>
+                  )}
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#084032' }}>{p.cliente_nombre}</h3>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: '#0d9488', fontWeight: 700 }}>📍 {p.localidad || 'Sin localidad'}</p>
+                  </div>
                 </div>
                 <span style={{ 
                   background: 'rgba(13,148,136,0.1)', color: '#0d9488', 
-                  fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 10 
+                  fontSize: 11, fontWeight: 800, padding: '4px 10px', borderRadius: 10, flexShrink: 0 
                 }}>EN RUTA</span>
               </div>
 
@@ -256,7 +283,8 @@ export default function VistaReparto() {
                 </button>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       ) : null}
 

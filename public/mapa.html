@@ -32,8 +32,9 @@
 
   var markers = [];
   var userMarker = null;
+  var routeLayer = null;
 
-  // Icono de droguería
+  // Icono de droguería (modo gestión)
   function makeIcon() {
     return L.divIcon({
       className: '',
@@ -44,7 +45,18 @@
     });
   }
 
-  // Icono de usuario (punto azul)
+  // Icono numerado (modo ruta activa) — fondo azul con número de orden
+  function makeNumberedIcon(number) {
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border:3px solid #fff;box-shadow:0 4px 12px rgba(59,130,246,.5);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:900;color:#fff;">' + number + '</div>',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -24]
+    });
+  }
+
+  // Icono de usuario (punto azul pulsante)
   function makeUserIcon() {
     return L.divIcon({
       className: '',
@@ -69,15 +81,16 @@
     return html;
   }
 
-  // Comunicación con React vía postMessage
+  // ── Comunicación con React vía postMessage ──
   window.addEventListener('message', function(event) {
     var data = event.data;
     if (!data || !data.type) return;
 
     if (data.type === 'SET_MARKERS') {
-      // Limpiar markers existentes
+      // Modo gestión: mostrar todos los clientes con sus íconos de tienda
       markers.forEach(function(m) { map.removeLayer(m); });
       markers = [];
+      if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
       var bounds = [];
 
       (data.clientes || []).forEach(function(c) {
@@ -90,7 +103,6 @@
         }
       });
 
-      // Posición del usuario
       if (data.userPos) {
         if (userMarker) map.removeLayer(userMarker);
         userMarker = L.marker([data.userPos.lat, data.userPos.lng], { icon: makeUserIcon() })
@@ -99,7 +111,6 @@
         bounds.push([data.userPos.lat, data.userPos.lng]);
       }
 
-      // Ajustar vista
       if (bounds.length > 1) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
       } else if (bounds.length === 1) {
@@ -110,7 +121,146 @@
     if (data.type === 'SET_CENTER') {
       map.setView([data.lat, data.lng], data.zoom || 13);
     }
+
+    if (data.type === 'CALCULATE_ROUTE') {
+      calculateRoute(data.clientes, data.userPos);
+    }
   });
+
+  // ── Motor de Enrutamiento con OSRM Trip API ──
+  async function calculateRoute(clientes, userPos) {
+    if (!userPos) {
+      window.parent.postMessage({ type: 'ROUTE_ERROR', message: 'GPS no disponible' }, '*');
+      return;
+    }
+    if (!clientes || clientes.length === 0) {
+      window.parent.postMessage({ type: 'ROUTE_ERROR', message: 'Sin clientes para enrutar' }, '*');
+      return;
+    }
+
+    // Limpiar ruta anterior
+    if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+
+    // Construir string de coordenadas: primero userPos, luego clientes con GPS
+    var coords = [userPos.lng + ',' + userPos.lat];
+    var clientsByIndex = [];
+
+    clientes.forEach(function(c) {
+      if (c.latitud && c.longitud) {
+        coords.push(c.longitud + ',' + c.latitud);
+        clientsByIndex.push(c);
+      }
+    });
+
+    if (clientsByIndex.length === 0) {
+      window.parent.postMessage({ type: 'ROUTE_ERROR', message: 'Ningún cliente tiene GPS registrado' }, '*');
+      return;
+    }
+
+    var url = 'https://router.project-osrm.org/trip/v1/driving/' +
+      coords.join(';') +
+      '?roundtrip=false&source=first&geometries=geojson';
+
+    try {
+      window.parent.postMessage({ type: 'ROUTE_LOADING', loading: true }, '*');
+
+      var response = await fetch(url);
+      var apiData = await response.json();
+
+      if (apiData.code !== 'Ok') {
+        throw new Error(apiData.message || 'Error en OSRM');
+      }
+
+      var trip = apiData.trips[0];
+      var waypoints = apiData.waypoints;
+
+      // Dibujar línea azul de la ruta
+      var latlngs = trip.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+      routeLayer = L.polyline(latlngs, {
+        color: '#3b82f6',
+        weight: 6,
+        opacity: 0.85,
+        lineJoin: 'round',
+        lineCap: 'round'
+      }).addTo(map);
+
+      // Limpiar pines anteriores
+      markers.forEach(function(m) { map.removeLayer(m); });
+      markers = [];
+
+      // Reconstruir orden óptimo de clientes
+      // waypoints[0] = userPos (origin), waypoints[1..N] = clientes
+      // waypoint_index = orden de visita real (1, 2, 3...)
+      // original_index = posición en el arreglo coords (0=userPos, 1..N=clientsByIndex)
+      var orderedClients = [];
+      for (var i = 1; i < waypoints.length; i++) {
+        var wp = waypoints[i];
+        var clientIdx = wp.original_index - 1;
+        var c = clientsByIndex[clientIdx];
+        orderedClients.push({ client: c, order: wp.waypoint_index });
+      }
+      orderedClients.sort(function(a, b) { return a.order - b.order; });
+
+      // Redibujar pines numerados y calcular bounds
+      var bounds = [[userPos.lat, userPos.lng]];
+      orderedClients.forEach(function(item) {
+        var c = item.client;
+        var m = L.marker([c.latitud, c.longitud], { icon: makeNumberedIcon(item.order) })
+          .bindPopup(popupHTML(c), { maxWidth: 270 })
+          .addTo(map);
+        markers.push(m);
+        bounds.push([c.latitud, c.longitud]);
+      });
+
+      map.fitBounds(bounds, { padding: [50, 50] });
+
+      // ── Construir URLs de navegación externa ──
+
+      // Waze: solo hacia la PRÓXIMA entrega (orden 1)
+      var wazeUrl = '';
+      var googleMapsUrl = '';
+      var nextClientName = '';
+      var orderedClientIds = orderedClients.map(function(item) { return item.client.cliente_id || item.client.id; });
+
+      if (orderedClients.length > 0) {
+        var nextStop = orderedClients[0].client;
+        nextClientName = nextStop.nombre || nextStop.cliente_nombre || '';
+        wazeUrl = 'https://waze.com/ul?ll=' + nextStop.latitud + ',' + nextStop.longitud + '&navigate=yes';
+
+        // Google Maps: origin → waypoints intermedios → destination
+        var lastStop = orderedClients[orderedClients.length - 1].client;
+        googleMapsUrl = 'https://www.google.com/maps/dir/?api=1';
+        googleMapsUrl += '&origin=' + userPos.lat + ',' + userPos.lng;
+        googleMapsUrl += '&destination=' + lastStop.latitud + ',' + lastStop.longitud;
+
+        // Google Maps permite hasta 8 waypoints intermedios (gratuito)
+        var intermediates = orderedClients.slice(0, orderedClients.length - 1);
+        if (intermediates.length > 0) {
+          var wps = intermediates
+            .map(function(item) { return item.client.latitud + ',' + item.client.longitud; })
+            .join('|');
+          googleMapsUrl += '&waypoints=' + encodeURIComponent(wps);
+        }
+      }
+
+      // Notificar a React con todos los datos
+      window.parent.postMessage({
+        type: 'ROUTE_INFO',
+        distance: trip.distance,
+        duration: trip.duration,
+        googleMapsUrl: googleMapsUrl,
+        wazeUrl: wazeUrl,
+        nextClientName: nextClientName,
+        orderedClientIds: orderedClientIds
+      }, '*');
+
+    } catch (e) {
+      console.error('[OSRM Error]', e);
+      window.parent.postMessage({ type: 'ROUTE_ERROR', message: e.message }, '*');
+    } finally {
+      window.parent.postMessage({ type: 'ROUTE_LOADING', loading: false }, '*');
+    }
+  }
 
   // Solicitar actualización de ubicación → enviar a React
   window.requestUpdateLocation = function(id, nombre) {

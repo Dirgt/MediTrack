@@ -437,6 +437,38 @@ export default function Navigation() {
           </Link>
         )}
 
+        {/* 4.75. Precios — Solo admin y vendedor */}
+        {!isRepartidor && (
+          <Link
+            href="/precios"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/precios' ? 'rgba(15,110,86,0.08)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/precios' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              💲
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/precios' ? 700 : 500,
+              color: pathname === '/precios' ? 'var(--brand)' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Precios
+            </span>
+          </Link>
+        )}
+
         {/* 5. Reparto — Repartidores y Admin */}
         {(isRepartidor || isAdmin) && (
           <Link
