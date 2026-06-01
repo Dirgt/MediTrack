@@ -262,16 +262,22 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
         </div>
       )}
 
-      {/* ── MODO REPARTO: Alerta de pedidos sin GPS ── */}
+      {/* ══ MODO REPARTO: Alerta de pedidos sin GPS ══ */}
       {modoReparto && sinUbicar.length > 0 && (
-        <div style={{ marginBottom: 12, padding: '12px 16px', borderRadius: 16, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-          <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+        <div style={{ marginBottom: 12, padding: '14px 16px', borderRadius: 16, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#92400e' }}>
-              {sinUbicar.length} pedido{sinUbicar.length > 1 ? 's' : ''} sin GPS — no se incluirá{sinUbicar.length > 1 ? 'n' : ''} en la ruta:
+            <div style={{ fontSize: 13, fontWeight: 900, color: '#92400e', marginBottom: 4 }}>
+              {ubicadas.length === 0
+                ? 'No se puede iniciar la ruta: ningún cliente está ubicado'
+                : `${sinUbicar.length} cliente${sinUbicar.length > 1 ? 's' : ''} sin ubicación registrada — no se incluirá${sinUbicar.length > 1 ? 'n' : ''} en la ruta`
+              }
             </div>
-            <div style={{ fontSize: 11, color: '#b45309', marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: '#b45309', marginBottom: 6 }}>
               {sinUbicar.map(p => p.cliente_nombre || p.nombre).join(', ')}
+            </div>
+            <div style={{ fontSize: 11, color: '#92400e', fontWeight: 700, background: 'rgba(146,64,14,0.08)', padding: '6px 10px', borderRadius: 8 }}>
+              📞 Comunícate con el administrador para registrar la ubicación de {sinUbicar.length > 1 ? 'estos clientes' : 'este cliente'}.
             </div>
           </div>
         </div>
@@ -360,6 +366,12 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
                   ? '🔄 Recalcular Ruta'
                   : '🗺️ Iniciar Ruta Óptima'}
             </button>
+            {/* Mensaje de ayuda cuando el botón está bloqueado por falta de ubicaciones */}
+            {!routeLoading && ubicadas.length === 0 && (
+              <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b', marginTop: 4, padding: '0 10px' }}>
+                El botón se activará cuando el administrador registre la ubicación de los clientes.
+              </div>
+            )}
           </div>
         )}
       </div>
