@@ -99,19 +99,18 @@ export default function ListaPrecios() {
         doc.text(`Generado el: ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}`, 14, 22);
 
         const tableData = filteredProductos.map(p => {
-          const tieneDesc = p.precio_descuento > 0 && p.precio_descuento < p.precio_normal;
           return [
             p.producto,
             p.marca || '--',
             formatearPrecio(p.precio_normal),
-            tieneDesc ? formatearPrecio(p.precio_descuento) : '--',
+            p.precio_descuento ? formatearPrecio(p.precio_descuento) : '--',
             p.agotado ? 'Agotado' : 'Disponible'
           ];
         });
 
         autoTable(doc, {
           startY: 28,
-          head: [['Producto', 'Marca', 'Sin Descuento', 'Con Descuento', 'Estado']],
+          head: [['Producto', 'Marca', 'Crédito', 'Contado', 'Estado']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [15, 110, 86] },
@@ -208,8 +207,8 @@ export default function ListaPrecios() {
               <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
                 <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Producto</th>
                 <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Marca</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Sin Descuento</th>
-                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Con Descuento</th>
+                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Crédito</th>
+                <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Contado</th>
                 {isAdmin && <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Acciones</th>}
               </tr>
             </thead>
@@ -232,10 +231,10 @@ export default function ListaPrecios() {
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>{prod.marca || '--'}</span>
                     </td>
                     <td style={{ padding: '16px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: tieneDescuento ? '#64748b' : 'var(--brand-dark)' }}>{formatearPrecio(prod.precio_normal)}</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: '#64748b' }}>{formatearPrecio(prod.precio_normal)}</span>
                     </td>
                     <td style={{ padding: '16px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
-                      {tieneDescuento ? (
+                      {prod.precio_descuento ? (
                         <span style={{ fontSize: 15, fontWeight: 900, color: '#0F6E56', background: 'rgba(15,110,86,0.06)', padding: '6px 10px', borderRadius: 8 }}>{formatearPrecio(prod.precio_descuento)}</span>
                       ) : (
                         <span style={{ fontSize: 13, fontWeight: 600, color: '#cbd5e1' }}>--</span>
@@ -303,9 +302,21 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
 
   const isEdit = !!productoBase;
 
+  const handlePrecioContadoChange = (e) => {
+    const val = e.target.value;
+    setPrecioDescuento(val);
+    if (val && !isNaN(val)) {
+      const numVal = parseFloat(val);
+      const creditoVal = Math.round(numVal / 0.9);
+      setPrecioNormal(creditoVal.toString());
+    } else {
+      setPrecioNormal('');
+    }
+  };
+
   const handleSave = async () => {
-    if (!nombre.trim() || !precioNormal) {
-      setError('Nombre y Precio Sin Descuento son obligatorios');
+    if (!nombre.trim() || !precioDescuento || !precioNormal) {
+      setError('Nombre, Precio de Contado y Precio a Crédito son obligatorios');
       return;
     }
     setSaving(true);
@@ -315,7 +326,7 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
       producto: nombre.trim(),
       marca: marca.trim() || null,
       precio_normal: parseFloat(precioNormal),
-      precio_descuento: precioDescuento ? parseFloat(precioDescuento) : null,
+      precio_descuento: parseFloat(precioDescuento),
       agotado
     };
 
@@ -353,17 +364,17 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--brand-dark)', marginBottom: 6, textTransform: 'uppercase' }}>Precio Sin Descuento</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: '#10b981', marginBottom: 6, textTransform: 'uppercase' }}>Precio de Contado</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontWeight: 800 }}>$</span>
-                <input type="number" value={precioNormal} onChange={e => setPrecioNormal(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 30px', borderRadius: 14, border: '2px solid rgba(15,110,86,0.15)', background: 'rgba(15,110,86,0.03)', fontSize: 15, fontWeight: 700, outline: 'none', color: 'var(--brand-dark)' }} />
+                <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#10b981', fontWeight: 800 }}>$</span>
+                <input type="number" value={precioDescuento} onChange={handlePrecioContadoChange} placeholder="Obligatorio" style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 30px', borderRadius: 14, border: '2px solid #ecfdf5', background: '#f0fdf4', color: '#059669', fontSize: 15, fontWeight: 700, outline: 'none' }} />
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: '#10b981', marginBottom: 6, textTransform: 'uppercase' }}>Precio Con Descuento</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: 'var(--brand-dark)', marginBottom: 6, textTransform: 'uppercase' }}>Precio a Crédito</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#10b981', fontWeight: 800 }}>$</span>
-                <input type="number" value={precioDescuento} onChange={e => setPrecioDescuento(e.target.value)} placeholder="Opcional" style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 30px', borderRadius: 14, border: '2px solid #ecfdf5', background: '#f0fdf4', color: '#059669', fontSize: 15, fontWeight: 700, outline: 'none' }} />
+                <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontWeight: 800 }}>$</span>
+                <input type="number" value={precioNormal} readOnly style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 30px', borderRadius: 14, border: '2px solid rgba(15,110,86,0.15)', background: 'rgba(15,110,86,0.03)', fontSize: 15, fontWeight: 700, outline: 'none', color: 'var(--brand-dark)', cursor: 'not-allowed' }} title="Calculado automáticamente" />
               </div>
             </div>
           </div>
