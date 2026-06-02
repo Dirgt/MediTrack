@@ -169,12 +169,14 @@ export default function VistaReparto() {
       </div>
 
       {/* TAB: Mapa */}
+      {/* Admin ve modo gestión (todos los clientes + buscador + filtros).  */}
+      {/* Repartidor ve modo ruta con sus pedidos activos.                  */}
       {activeTab === 'mapa' && isClient && (
         <MapaReparto
-          pedidos={pedidos}
+          pedidos={profile?.role === 'admin' ? undefined : pedidos}
           usuarioId={user.id}
           onUbicacionGuardada={handleUbicacionGuardada}
-          onOrdenCalculado={handleOrdenCalculado}
+          onOrdenCalculado={profile?.role !== 'admin' ? handleOrdenCalculado : undefined}
         />
       )}
 

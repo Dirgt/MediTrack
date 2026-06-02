@@ -24,6 +24,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState(null);
   const totalInicialRef = useRef(null);
+  const rutaActivaRef = useRef(false); // Espejo de rutaActiva sin causar cambio de tamaño en dep arrays
 
   // Modo de operación: si le pasan la prop 'pedidos' (incluso vacía), es 'reparto'.
   // Si no se la pasan (es undefined), es 'gestion' (admin de ubicaciones).
@@ -42,15 +43,10 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     setLoading(false);
   }, []);
 
-  // Solo cargar todos los clientes en modo gestión (admin)
+  // Cargar todos los clientes siempre
   useEffect(() => {
-    if (!modoReparto) {
-      fetchTodosLosClientes();
-    } else {
-      setClientesData([]);
-      setLoading(false);
-    }
-  }, [modoReparto, fetchTodosLosClientes]);
+    fetchTodosLosClientes();
+  }, [fetchTodosLosClientes]);
 
   // Restaurar ruta previa desde localStorage
   useEffect(() => {
@@ -99,6 +95,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
         };
         setRutaInfo(info);
         setRutaActiva(true);
+        rutaActivaRef.current = true;
         setRouteError(null);
         // Persistir en localStorage
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(info)); } catch (_) {}
@@ -120,15 +117,19 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     return () => window.removeEventListener('message', onMessage);
   }, [clientesData, safePedidos, modoReparto, onOrdenCalculado]);
 
-  // Enviar markers al mapa (modo gestión)
+  // Enviar markers al mapa (todos los clientes) — solo cuando NO hay ruta activa calculada
   useEffect(() => {
-    if (!mapReady || !iframeRef.current?.contentWindow || modoReparto) return;
+    if (!mapReady || !iframeRef.current?.contentWindow) return;
+    if (rutaActivaRef.current) return;
     iframeRef.current.contentWindow.postMessage({
       type: 'SET_MARKERS',
       clientes: clientesData.filter(c => c.latitud && c.longitud),
       userPos,
     }, '*');
-  }, [mapReady, clientesData, userPos, modoReparto]);
+  }, [mapReady, clientesData, userPos]);
+
+  // Hook vacío para mantener la cantidad de hooks
+  useEffect(() => {}, []);
 
   // ── Función principal: calcular ruta óptima ──
   const calcularRutaOptima = useCallback(() => {
@@ -167,6 +168,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       // Jornada completa: limpiar localStorage
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
       setRutaActiva(false);
+      rutaActivaRef.current = false;
       setRutaInfo(null);
       totalInicialRef.current = null;
       return;
@@ -185,12 +187,18 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   };
 
   // ── Datos derivados ──
-  const clientesBase = modoReparto ? safePedidos : clientesData;
+  const clientesBase = clientesData;
   const ubicadas = clientesBase.filter(c => c.latitud && c.longitud);
   const sinUbicar = clientesBase.filter(c => !c.latitud || !c.longitud);
 
+  // Datos específicos de los pedidos del repartidor actual (para alertas y rutas)
+  const pedidosUbicados = safePedidos.filter(p => p.latitud && p.longitud);
+  const pedidosSinUbicar = safePedidos.filter(p => !p.latitud || !p.longitud);
+
+  const fuenteBusqueda = clientesData;
+
   const sugerencias = textoBusqueda.length > 0
-    ? clientesData.filter(c => c.nombre.toLowerCase().includes(textoBusqueda.toLowerCase())).slice(0, 8)
+    ? fuenteBusqueda.filter(c => c.nombre && c.nombre.toLowerCase().includes(textoBusqueda.toLowerCase())).slice(0, 8)
     : [];
 
   // Progreso de jornada
@@ -202,54 +210,51 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   return (
     <div style={{ position: 'relative', fontFamily: 'Inter, system-ui, sans-serif', color: '#1e293b' }}>
 
-      {/* ── MODO GESTIÓN: buscador y filtros ── */}
-      {!modoReparto && (
-        <>
-          <div style={{ marginBottom: 16, position: 'relative' }}>
-            <p style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>🔍 Buscar por nombre:</p>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                placeholder="Escribe el nombre de la droguería..."
-                value={textoBusqueda}
-                onChange={(e) => { setTextoBusqueda(e.target.value); setMostrarSugerencias(true); }}
-                onFocus={() => setMostrarSugerencias(true)}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1px solid #e2e8f0', fontSize: 14, background: '#fff', outline: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
-              />
-              {mostrarSugerencias && sugerencias.length > 0 && (
-                <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, background: '#fff', borderRadius: 14, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9', zIndex: 1000, overflow: 'hidden' }}>
-                  {sugerencias.map(c => (
-                    <div key={c.id} onClick={() => { setClienteParaUbicar(c); setMostrarSugerencias(false); setTextoBusqueda(''); }}
-                      style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdfa'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
-                    >
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: 13 }}>{c.nombre}</div>
-                        <div style={{ fontSize: 10, color: '#94a3b8' }}>{c.ciudad || 'Sin ciudad'}</div>
-                      </div>
-                      <div style={{ fontSize: 9, fontWeight: 800, color: c.latitud ? '#10b981' : '#f59e0b', padding: '4px 8px', borderRadius: 6, background: c.latitud ? '#ecfdf5' : '#fff7ed' }}>
-                        {c.latitud ? 'REGISTRADA' : 'UBICAR'}
-                      </div>
-                    </div>
-                  ))}
+      {/* ── BUSCADOR (Visible en todos los modos) ── */}
+      <div style={{ marginBottom: 16, position: 'relative' }}>
+        <p style={{ fontSize: 11, fontWeight: 800, color: '#94a3b8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>🔍 Buscar por nombre:</p>
+        <div style={{ position: 'relative' }}>
+          <input
+            type="text"
+            placeholder="Escribe el nombre de la droguería..."
+            value={textoBusqueda}
+            onChange={(e) => { setTextoBusqueda(e.target.value); setMostrarSugerencias(true); }}
+            onFocus={() => setMostrarSugerencias(true)}
+            style={{ width: '100%', padding: '12px 16px', borderRadius: 14, border: '1px solid #e2e8f0', fontSize: 14, background: '#fff', outline: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+          />
+          {mostrarSugerencias && sugerencias.length > 0 && (
+            <div style={{ position: 'absolute', top: '105%', left: 0, right: 0, background: '#fff', borderRadius: 14, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9', zIndex: 1000, overflow: 'hidden' }}>
+              {sugerencias.map(c => (
+                <div key={c.id} onClick={() => { setClienteParaUbicar(c); setMostrarSugerencias(false); setTextoBusqueda(''); }}
+                  style={{ padding: '12px 16px', borderBottom: '1px solid #f8fafc', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f0fdfa'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{c.nombre}</div>
+                    <div style={{ fontSize: 10, color: '#94a3b8' }}>{c.ciudad || 'Sin ciudad'}</div>
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: c.latitud ? '#10b981' : '#f59e0b', padding: '4px 8px', borderRadius: 6, background: c.latitud ? '#ecfdf5' : '#fff7ed' }}>
+                    {c.latitud ? 'REGISTRADA' : 'UBICAR'}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-          </div>
+          )}
+        </div>
+      </div>
 
-          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-            <button onClick={() => setFiltroVista('sin_ubicar')} style={{ flex: 1, padding: '12px', borderRadius: 16, border: filtroVista === 'sin_ubicar' ? '2px solid #ef4444' : '2px solid #f1f5f9', background: filtroVista === 'sin_ubicar' ? '#fff1f2' : '#f8fafc', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 64 }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: filtroVista === 'sin_ubicar' ? '#b91c1c' : '#64748b' }}>{sinUbicar.length}</div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: filtroVista === 'sin_ubicar' ? '#b91c1c' : '#94a3b8' }}>❌ SIN UBICAR</div>
-            </button>
-            <button onClick={() => setFiltroVista('ubicadas')} style={{ flex: 1, padding: '12px', borderRadius: 16, border: filtroVista === 'ubicadas' ? '2px solid #22c55e' : '2px solid #f1f5f9', background: filtroVista === 'ubicadas' ? '#f0fdf4' : '#f8fafc', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 64 }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: filtroVista === 'ubicadas' ? '#15803d' : '#64748b' }}>{ubicadas.length}</div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: filtroVista === 'ubicadas' ? '#15803d' : '#94a3b8' }}>✅ UBICADAS</div>
-            </button>
-          </div>
-        </>
-      )}
+      {/* ── Filtros (Visibles en ambos modos) ── */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        <button onClick={() => setFiltroVista('sin_ubicar')} style={{ flex: 1, padding: '12px', borderRadius: 16, border: filtroVista === 'sin_ubicar' ? '2px solid #ef4444' : '2px solid #f1f5f9', background: filtroVista === 'sin_ubicar' ? '#fff1f2' : '#f8fafc', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 64 }}>
+          <div style={{ fontSize: 18, fontWeight: 900, color: filtroVista === 'sin_ubicar' ? '#b91c1c' : '#64748b' }}>{sinUbicar.length}</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: filtroVista === 'sin_ubicar' ? '#b91c1c' : '#94a3b8' }}>❌ SIN UBICAR</div>
+        </button>
+        <button onClick={() => setFiltroVista('ubicadas')} style={{ flex: 1, padding: '12px', borderRadius: 16, border: filtroVista === 'ubicadas' ? '2px solid #22c55e' : '2px solid #f1f5f9', background: filtroVista === 'ubicadas' ? '#f0fdf4' : '#f8fafc', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 64 }}>
+          <div style={{ fontSize: 18, fontWeight: 900, color: filtroVista === 'ubicadas' ? '#15803d' : '#64748b' }}>{ubicadas.length}</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: filtroVista === 'ubicadas' ? '#15803d' : '#94a3b8' }}>✅ UBICADAS</div>
+        </button>
+      </div>
 
       {/* ── MODO REPARTO: Banner de Próxima Entrega ── */}
       {modoReparto && rutaActiva && rutaInfo?.nextClientName && (
@@ -263,21 +268,21 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       )}
 
       {/* ══ MODO REPARTO: Alerta de pedidos sin GPS ══ */}
-      {modoReparto && sinUbicar.length > 0 && (
+      {modoReparto && pedidosSinUbicar.length > 0 && safePedidos.length > 0 && (
         <div style={{ marginBottom: 12, padding: '14px 16px', borderRadius: 16, background: '#fffbeb', border: '1px solid #fde68a', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <span style={{ fontSize: 20, flexShrink: 0 }}>⚠️</span>
           <div>
             <div style={{ fontSize: 13, fontWeight: 900, color: '#92400e', marginBottom: 4 }}>
-              {ubicadas.length === 0
-                ? 'No se puede iniciar la ruta: ningún cliente está ubicado'
-                : `${sinUbicar.length} cliente${sinUbicar.length > 1 ? 's' : ''} sin ubicación registrada — no se incluirá${sinUbicar.length > 1 ? 'n' : ''} en la ruta`
+              {pedidosUbicados.length === 0
+                ? 'No se puede iniciar la ruta: ningún cliente asignado está ubicado'
+                : `${pedidosSinUbicar.length} pedido${pedidosSinUbicar.length > 1 ? 's' : ''} sin ubicación registrada — no se incluirá${pedidosSinUbicar.length > 1 ? 'n' : ''} en la ruta`
               }
             </div>
             <div style={{ fontSize: 11, color: '#b45309', marginBottom: 6 }}>
-              {sinUbicar.map(p => p.cliente_nombre || p.nombre).join(', ')}
+              {pedidosSinUbicar.map(p => p.cliente_nombre || p.nombre).join(', ')}
             </div>
             <div style={{ fontSize: 11, color: '#92400e', fontWeight: 700, background: 'rgba(146,64,14,0.08)', padding: '6px 10px', borderRadius: 8 }}>
-              📞 Comunícate con el administrador para registrar la ubicación de {sinUbicar.length > 1 ? 'estos clientes' : 'este cliente'}.
+              📞 Usa el buscador o comunícate con el administrador para registrar la ubicación de {pedidosSinUbicar.length > 1 ? 'estos clientes' : 'este cliente'}.
             </div>
           </div>
         </div>
@@ -314,7 +319,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
           />
         </div>
 
-        {/* Controles flotantes (solo en modo reparto) */}
+        {/* Controles flotantes — visibles solo en modo reparto */}
         {modoReparto && (
           <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 10, width: '92%' }}>
 
@@ -349,13 +354,13 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
             <button
               id="btn-iniciar-ruta"
               onClick={calcularRutaOptima}
-              disabled={routeLoading || ubicadas.length === 0}
+              disabled={routeLoading || pedidosUbicados.length === 0}
               style={{
                 width: '100%', padding: '14px', borderRadius: 100, border: 'none',
-                background: routeLoading || ubicadas.length === 0 ? '#94a3b8' : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
+                background: routeLoading || pedidosUbicados.length === 0 ? '#94a3b8' : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
                 color: '#fff', fontSize: 15, fontWeight: 900,
-                cursor: routeLoading || ubicadas.length === 0 ? 'not-allowed' : 'pointer',
-                boxShadow: ubicadas.length > 0 ? '0 8px 25px rgba(37,99,235,0.4)' : 'none',
+                cursor: routeLoading || pedidosUbicados.length === 0 ? 'not-allowed' : 'pointer',
+                boxShadow: pedidosUbicados.length > 0 ? '0 8px 25px rgba(37,99,235,0.4)' : 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 transition: 'all 0.2s ease'
               }}
@@ -366,40 +371,40 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
                   ? '🔄 Recalcular Ruta'
                   : '🗺️ Iniciar Ruta Óptima'}
             </button>
-            {/* Mensaje de ayuda cuando el botón está bloqueado por falta de ubicaciones */}
-            {!routeLoading && ubicadas.length === 0 && (
+            {/* Mensaje de ayuda cuando el botón está bloqueado */}
+            {!routeLoading && pedidosUbicados.length === 0 && (
               <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b', marginTop: 4, padding: '0 10px' }}>
-                El botón se activará cuando el administrador registre la ubicación de los clientes.
+                {safePedidos.length === 0
+                  ? 'No tienes pedidos asignados para entregar.'
+                  : 'El botón se activará cuando tus pedidos tengan ubicación registrada.'}
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* ── MODO GESTIÓN: listado de clientes debajo ── */}
-      {!modoReparto && (
-        <div>
-          <p style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.05em' }}>
-            {filtroVista === 'sin_ubicar' ? '📍 Pendientes de ubicación' : '📌 Clientes en mapa'}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {(filtroVista === 'sin_ubicar' ? sinUbicar : ubicadas).slice(0, 8).map((c) => (
-              <div key={c.id} style={{ padding: '12px 16px', borderRadius: 16, background: '#fff', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{c.nombre}</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8' }}>{c.ciudad || 'Sin ciudad'}</div>
-                </div>
-                <button onClick={() => setClienteParaUbicar(c)} style={{ padding: '8px 16px', borderRadius: 10, background: c.latitud ? '#f1f5f9' : '#0d9488', color: c.latitud ? '#64748b' : '#fff', border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
-                  {c.latitud ? 'Ajustar' : 'Ubicar'}
-                </button>
+      {/* ── Listado de clientes debajo (Visible en ambos modos) ── */}
+      <div>
+        <p style={{ fontSize: 10, fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 10, letterSpacing: '0.05em' }}>
+          {filtroVista === 'sin_ubicar' ? '📍 Pendientes de ubicación' : '📌 Clientes en mapa'}
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(filtroVista === 'sin_ubicar' ? sinUbicar : ubicadas).slice(0, 8).map((c) => (
+            <div key={c.id} style={{ padding: '12px 16px', borderRadius: 16, background: '#fff', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{c.nombre || c.cliente_nombre}</div>
+                <div style={{ fontSize: 10, color: '#94a3b8' }}>{c.ciudad || c.localidad || 'Sin ciudad'}</div>
               </div>
-            ))}
-            {!loading && (filtroVista === 'sin_ubicar' ? sinUbicar : ubicadas).length === 0 && (
-              <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>No hay clientes en esta categoría.</div>
-            )}
-          </div>
+              <button onClick={() => setClienteParaUbicar(c)} style={{ padding: '8px 16px', borderRadius: 10, background: c.latitud ? '#f1f5f9' : '#0d9488', color: c.latitud ? '#64748b' : '#fff', border: 'none', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
+                {c.latitud ? 'Ajustar' : 'Ubicar'}
+              </button>
+            </div>
+          ))}
+          {!loading && (filtroVista === 'sin_ubicar' ? sinUbicar : ubicadas).length === 0 && (
+            <div style={{ textAlign: 'center', padding: 20, color: '#94a3b8', fontSize: 13 }}>No hay clientes en esta categoría.</div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Modal de captura de ubicación */}
       {clienteParaUbicar && (
