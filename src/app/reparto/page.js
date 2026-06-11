@@ -350,71 +350,100 @@ function ModalRecaudo({ pedido, onConfirm, onCancel }) {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', padding: 20 }}>
-      <div style={{ width: '100%', maxWidth: 400, background: 'white', borderRadius: 28, padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.2)', animation: 'fadeIn 0.3s' }}>
-        <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, color: '#084032', textAlign: 'center' }}>Finalizar Entrega</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 14, color: '#64748b', textAlign: 'center' }}>{pedido.cliente_nombre}</p>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', padding: '0' }}>
+      <div style={{
+        width: '100%', maxWidth: 480,
+        background: 'white',
+        borderRadius: '28px 28px 0 0',
+        boxShadow: '0 -10px 40px rgba(0,0,0,0.2)',
+        animation: 'slideUp 0.3s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: '92dvh',
+        overflow: 'hidden',
+      }}>
+        {/* ── Drag handle decorativo ── */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 4px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 100, background: '#e2e8f0' }} />
+        </div>
 
-        {/* Productos del pedido */}
-        {pedido.order_items?.length > 0 && (
-          <div style={{ background: '#f0fdf4', borderRadius: 14, padding: '12px 14px', marginBottom: 16, border: '1px solid #bbf7d0' }}>
-            <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 900, color: '#15803d', textTransform: 'uppercase' }}>📦 Productos a entregar</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {pedido.order_items.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#084032' }}>• {item.medicamento_nombre}</span>
-                  <span style={{ fontSize: 13, fontWeight: 900, color: '#0F6E56', background: 'rgba(15,110,86,0.08)', padding: '2px 10px', borderRadius: 8 }}>x{item.cantidad}</span>
-                </div>
+        {/* ── Cabecera fija ── */}
+        <div style={{ padding: '4px 24px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 800, color: '#084032', textAlign: 'center' }}>Finalizar Entrega</h3>
+          <p style={{ margin: 0, fontSize: 14, color: '#64748b', textAlign: 'center' }}>{pedido.cliente_nombre}</p>
+        </div>
+
+        {/* ── Cuerpo scrollable ── */}
+        <div style={{ overflowY: 'auto', flex: 1, padding: '16px 24px', WebkitOverflowScrolling: 'touch' }}>
+
+          {/* Productos del pedido */}
+          {pedido.order_items?.length > 0 && (
+            <div style={{ background: '#f0fdf4', borderRadius: 14, padding: '12px 14px', marginBottom: 16, border: '1px solid #bbf7d0' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 900, color: '#15803d', textTransform: 'uppercase' }}>📦 Productos a entregar</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {pedido.order_items.map((item, idx) => (
+                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#084032' }}>• {item.medicamento_nombre}</span>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: '#0F6E56', background: 'rgba(15,110,86,0.08)', padding: '2px 10px', borderRadius: 8 }}>x{item.cantidad}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#084032', marginBottom: 8 }}>Método de Pago</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              {['efectivo', 'transferencia', 'pendiente'].map(m => (
+                <button key={m} onClick={() => setMetodo(m)} style={{
+                  padding: '10px 4px', borderRadius: 12, border: metodo === m ? '2px solid #0F6E56' : '2px solid #f1f5f9',
+                  background: metodo === m ? 'rgba(15,110,86,0.05)' : 'white', color: metodo === m ? '#0F6E56' : '#94a3b8',
+                  fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase'
+                }}>{m}</button>
               ))}
             </div>
           </div>
-        )}
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#084032', marginBottom: 8 }}>Método de Pago</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-            {['efectivo', 'transferencia', 'pendiente'].map(m => (
-              <button key={m} onClick={() => setMetodo(m)} style={{
-                padding: '10px 4px', borderRadius: 12, border: metodo === m ? '2px solid #0F6E56' : '2px solid #f1f5f9',
-                background: metodo === m ? 'rgba(15,110,86,0.05)' : 'white', color: metodo === m ? '#0F6E56' : '#94a3b8',
-                fontWeight: 800, fontSize: 11, cursor: 'pointer', textTransform: 'uppercase'
-              }}>{m}</button>
-            ))}
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#084032', marginBottom: 8 }}>
+              Valor Recaudado {esContado && metodo !== 'pendiente' && <span style={{ color: '#ef4444' }}>*</span>}
+            </label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#94a3b8' }}>$</span>
+              <input
+                type="number" value={valor} onChange={e => setValor(e.target.value)}
+                disabled={metodo === 'pendiente'}
+                placeholder={metodo === 'pendiente' ? 'Sin recaudo' : (esContado ? 'Valor obligatorio' : 'Opcional')}
+                style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 32px', borderRadius: 16, border: '2px solid #f1f5f9', fontSize: 16, fontWeight: 700, outline: 'none', background: metodo === 'pendiente' ? '#f8fafc' : 'white' }}
+              />
+            </div>
           </div>
-        </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#084032', marginBottom: 8 }}>
-            Valor Recaudado {esContado && metodo !== 'pendiente' && <span style={{ color: '#ef4444' }}>*</span>}
-          </label>
-          <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#94a3b8' }}>$</span>
-            <input 
-              type="number" value={valor} onChange={e => setValor(e.target.value)}
-              disabled={metodo === 'pendiente'}
-              placeholder={metodo === 'pendiente' ? 'Sin recaudo' : (esContado ? 'Valor obligatorio' : 'Opcional')}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 32px', borderRadius: 16, border: '2px solid #f1f5f9', fontSize: 16, fontWeight: 700, outline: 'none', background: metodo === 'pendiente' ? '#f8fafc' : 'white' }}
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#084032', marginBottom: 8 }}>Observaciones / Justificación</label>
+            <textarea
+              value={observacion}
+              onChange={e => setObservacion(e.target.value)}
+              placeholder="Escribe aquí si hubo algún problema o el pago quedó pendiente..."
+              style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 16, border: '2px solid #f1f5f9', fontSize: 14, minHeight: 80, resize: 'none', outline: 'none', fontFamily: 'inherit' }}
             />
           </div>
         </div>
 
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#084032', marginBottom: 8 }}>Observaciones / Justificación</label>
-          <textarea 
-            value={observacion} 
-            onChange={e => setObservacion(e.target.value)}
-            placeholder="Escribe aquí si hubo algún problema o el pago quedó pendiente..."
-            style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 16, border: '2px solid #f1f5f9', fontSize: 14, minHeight: 80, resize: 'none', outline: 'none', fontFamily: 'inherit' }}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '14px', borderRadius: 16, border: '1px solid #e2e8f0', background: 'white', fontWeight: 700, cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={handleFinal} style={{ flex: 2, padding: '14px', borderRadius: 16, border: 'none', background: '#0F6E56', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 6px 16px rgba(15,110,86,0.2)' }}>Finalizar Entrega ✅</button>
+        {/* ── Botones siempre visibles al fondo ── */}
+        <div style={{
+          padding: '12px 24px 28px',
+          borderTop: '1px solid #f1f5f9',
+          display: 'flex', gap: 10,
+          flexShrink: 0,
+          background: 'white',
+        }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '14px', borderRadius: 16, border: '1px solid #e2e8f0', background: 'white', fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Cancelar</button>
+          <button onClick={handleFinal} style={{ flex: 2, padding: '14px', borderRadius: 16, border: 'none', background: '#0F6E56', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 6px 16px rgba(15,110,86,0.2)', fontSize: 15 }}>Finalizar Entrega ✅</button>
         </div>
       </div>
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );
