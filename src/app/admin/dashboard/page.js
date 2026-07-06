@@ -24,7 +24,7 @@ export default function DashboardAdmin() {
   
   // Dynamic State
   const [allPedidos, setAllPedidos] = useState([]);
-  const [clientesCount, setClientesCount] = useState(0);
+  const [allClientes, setAllClientes] = useState([]);
   const [timeFilter, setTimeFilter] = useState('7d'); // 'today', '7d', '30d', 'all'
   const [statusFilter, setStatusFilter] = useState(null);
   
@@ -41,17 +41,18 @@ export default function DashboardAdmin() {
     criticos: 0,
     porLocalidad: {},
     topMedicamentos: [],
+    clientesInactivos: [],
   });
 
   const fetchStats = useCallback(async () => {
-    const [{ data: pedidos }, { count: totalClientes }, { data: items }] = await Promise.all([
+    const [{ data: pedidos }, { data: clientes }, { data: items }] = await Promise.all([
       supabase.from('orders').select('id, estado, creado_en, cliente_nombre, vendedor_id, localidad, profiles!orders_vendedor_id_fkey(nombre_completo)').order('creado_en', { ascending: false }),
-      supabase.from('clientes').select('*', { count: 'exact', head: true }),
+      supabase.from('clientes').select('*').eq('activo', true),
       supabase.from('order_items').select('medicamento_nombre, cantidad'),
     ]);
 
     if (pedidos) setAllPedidos(pedidos);
-    if (totalClientes) setClientesCount(totalClientes);
+    if (clientes) setAllClientes(clientes);
 
     // Calcular top medicamentos
     if (items) {
@@ -154,12 +155,37 @@ export default function DashboardAdmin() {
       tendencia.push({ dia: d.toLocaleDateString('es-CO', { weekday:'short' }).replace('.',''), count });
     }
 
+    // Clientes inactivos (sin pedidos en los últimos 20 días)
+    const limit20d = new Date();
+    limit20d.setDate(limit20d.getDate() - 20);
+    const limit20dISO = limit20d.toISOString();
+    const pedidosUltimos20d = allPedidos.filter(p => p.creado_en >= limit20dISO);
+    const clientesConPedido = new Set(
+      pedidosUltimos20d.map(p => p.cliente_nombre?.trim().toLowerCase()).filter(Boolean)
+    );
+    const clientesInactivos = allClientes
+      .filter(c => !clientesConPedido.has(c.nombre?.trim().toLowerCase()))
+      .map(c => {
+        const nombreLower = c.nombre?.trim().toLowerCase();
+        const pedidosCliente = allPedidos.filter(p => p.cliente_nombre?.trim().toLowerCase() === nombreLower);
+        const ultimoPedido = pedidosCliente.length > 0
+          ? pedidosCliente.reduce((latest, p) => p.creado_en > latest.creado_en ? p : latest).creado_en
+          : null;
+        return { ...c, ultimo_pedido: ultimoPedido };
+      })
+      .sort((a, b) => {
+        if (!a.ultimo_pedido && !b.ultimo_pedido) return 0;
+        if (!a.ultimo_pedido) return -1;
+        if (!b.ultimo_pedido) return 1;
+        return a.ultimo_pedido.localeCompare(b.ultimo_pedido);
+      });
+
     setStats(prev => ({
       ...prev,
-      totalPedidos, filteredCount, pedidosHoy, tasaEntrega, porEstado, topVendedores, pedidosRecientes, tendencia, maxTrend, criticos, porLocalidad
+      totalPedidos, filteredCount, pedidosHoy, tasaEntrega, porEstado, topVendedores, pedidosRecientes, tendencia, maxTrend, criticos, porLocalidad, clientesInactivos
     }));
 
-  }, [allPedidos, timeFilter, statusFilter]);
+  }, [allPedidos, allClientes, timeFilter, statusFilter]);
 
   if (userLoading) return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -477,6 +503,55 @@ export default function DashboardAdmin() {
                     <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, margin: '20px 0' }}>No hay ventas en este periodo</p>
                  )}
               </div>
+            </div>
+
+            {/* ── 5b. CLIENTES POR REACTIVAR (20 DÍAS) ── */}
+            <div style={{ background: 'white', borderRadius: 28, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h3 style={{ fontSize: 13, fontWeight: 900, color: '#f59e0b', margin: 0, textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>⚠️</span> Clientes por Reactivar
+                </h3>
+                <span style={{ fontSize: 11, fontWeight: 800, color: stats.clientesInactivos.length > 0 ? '#f59e0b' : '#10b981', background: stats.clientesInactivos.length > 0 ? '#fffbeb' : '#ecfdf5', padding: '4px 10px', borderRadius: 12 }}>
+                  {stats.clientesInactivos.length} cliente{stats.clientesInactivos.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 16px', fontWeight: 500 }}>
+                Clientes activos sin pedidos en los últimos 20 días
+              </p>
+
+              {stats.clientesInactivos.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
+                  {stats.clientesInactivos.map((c, i) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', background: i % 2 === 0 ? '#fffbeb' : 'white', borderRadius: 16, border: '1px solid #fef3c7', transition: 'transform 0.2s' }}>
+                      <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg, #f59e0b, #d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: 'white', fontWeight: 800, flexShrink: 0 }}>
+                        {c.nombre?.[0]?.toUpperCase() || '?'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nombre}</p>
+                        <p style={{ margin: '2px 0 0', fontSize: 11, color: '#64748b', fontWeight: 500 }}>
+                          {c.ciudad || 'Sin localidad'}{c.telefono ? ` • ${c.telefono}` : ''}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: '#d97706', background: '#fef3c7', padding: '4px 10px', borderRadius: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                          {c.ultimo_pedido ? `Hace ${Math.floor((Date.now() - new Date(c.ultimo_pedido).getTime()) / (1000 * 60 * 60 * 24))}d` : 'Sin pedidos'}
+                        </div>
+                        {c.ultimo_pedido && (
+                          <p style={{ margin: 0, fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>
+                            {new Date(c.ultimo_pedido).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                  <span style={{ fontSize: 32, display: 'block', marginBottom: 8 }}>🎉</span>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#10b981' }}>¡Todos los clientes están activos!</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>Todos realizaron pedidos en los últimos 20 días</p>
+                </div>
+              )}
             </div>
 
             {/* ── 6. ÚLTIMA ACTIVIDAD ── */}
