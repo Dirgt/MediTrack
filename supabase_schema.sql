@@ -13,7 +13,7 @@ CREATE TABLE public.profiles (
 
 -- Habilitar Row Level Security para perfiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
-
+-- comentario nuevo
 CREATE POLICY "Los perfiles son visibles por todos los autenticados" 
 ON public.profiles FOR SELECT USING (auth.role() = 'authenticated');
 
