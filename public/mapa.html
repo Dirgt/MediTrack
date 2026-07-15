@@ -33,6 +33,7 @@
   var markers = [];
   var userMarker = null;
   var routeLayer = null;
+  var routeActive = false; // true después de calcular ruta para proteger los marcadores numerados
 
   // Icono de droguería (modo gestión)
   function makeIcon() {
@@ -119,6 +120,9 @@
     if (!data || !data.type) return;
 
     if (data.type === 'SET_MARKERS') {
+      // Si la ruta ya está activa, ignorar SET_MARKERS para no borrar los números de orden
+      if (routeActive) return;
+
       // Modo gestión: mostrar todos los clientes con sus íconos de tienda
       markers.forEach(function(m) { map.removeLayer(m); });
       markers = [];
@@ -126,7 +130,7 @@
       var bounds = [];
 
       (data.clientes || []).forEach(function(c) {
-        if (c.latitud && c.longitud) {
+        if (c && c.latitud && c.longitud) {
           var m = L.marker([c.latitud, c.longitud], { icon: makeIcon() })
             .bindPopup(popupHTML(c), { maxWidth: 270 })
             .addTo(map);
@@ -136,7 +140,7 @@
       });
 
       (data.usuarios || []).forEach(function(u) {
-        if (u.latitud && u.longitud) {
+        if (u && u.latitud && u.longitud) {
           var icon = makeVendedorIcon();
           if (u.role === 'repartidor') icon = makeRepartidorIcon();
           if (u.role === 'admin') icon = makeAdminIcon();
@@ -184,6 +188,14 @@
     if (data.type === 'CALCULATE_ROUTE') {
       calculateRoute(data.clientes, data.userPos);
     }
+
+    if (data.type === 'RESET_ROUTE') {
+      // Limpiar ruta y volver al modo gestión (SET_MARKERS funcionará de nuevo)
+      routeActive = false;
+      markers.forEach(function(m) { map.removeLayer(m); });
+      markers = [];
+      if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+    }
   });
 
   // ── Motor de Enrutamiento con OSRM Trip API ──
@@ -198,6 +210,7 @@
     }
 
     // Limpiar ruta anterior
+    routeActive = false;
     if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
 
     // Construir string de coordenadas: primero userPos, luego clientes con GPS
@@ -252,24 +265,36 @@
       // waypoint_index = orden de visita real (1, 2, 3...)
       // original_index = posición en el arreglo coords (0=userPos, 1..N=clientsByIndex)
       var orderedClients = [];
-      for (var i = 1; i < waypoints.length; i++) {
+      for (var i = 0; i < waypoints.length; i++) {
         var wp = waypoints[i];
+        if (wp.original_index === 0) continue; // Saltar userPos
         var clientIdx = wp.original_index - 1;
         var c = clientsByIndex[clientIdx];
-        orderedClients.push({ client: c, order: wp.waypoint_index });
+        if (c) {
+          // waypoint_index de OSRM incluye el origen (0), guardamos el orden real entre clientes
+          orderedClients.push({ client: c, order: wp.waypoint_index });
+        } else {
+          console.warn('OSRM devolvió un original_index no mapeado:', wp.original_index);
+        }
       }
       orderedClients.sort(function(a, b) { return a.order - b.order; });
+      // Renumerar desde 1 independientemente del waypoint_index de OSRM
+      orderedClients.forEach(function(item, idx) { item.displayOrder = idx + 1; });
 
       // Redibujar pines numerados y calcular bounds
       var bounds = [[userPos.lat, userPos.lng]];
       orderedClients.forEach(function(item) {
         var c = item.client;
-        var m = L.marker([c.latitud, c.longitud], { icon: makeNumberedIcon(item.order) })
-          .bindPopup(popupHTML(c), { maxWidth: 270 })
-          .addTo(map);
-        markers.push(m);
-        bounds.push([c.latitud, c.longitud]);
+        if (c && c.latitud && c.longitud) {
+          var m = L.marker([c.latitud, c.longitud], { icon: makeNumberedIcon(item.displayOrder) })
+            .bindPopup(popupHTML(c), { maxWidth: 270 })
+            .addTo(map);
+          markers.push(m);
+          bounds.push([c.latitud, c.longitud]);
+        }
       });
+      // Marcar ruta como activa para proteger los marcadores numerados
+      routeActive = true;
 
       map.fitBounds(bounds, { padding: [50, 50] });
 
@@ -283,22 +308,27 @@
 
       if (orderedClients.length > 0) {
         var nextStop = orderedClients[0].client;
-        nextClientName = nextStop.nombre || nextStop.cliente_nombre || '';
-        wazeUrl = 'https://waze.com/ul?ll=' + nextStop.latitud + ',' + nextStop.longitud + '&navigate=yes';
+        if (nextStop && nextStop.latitud && nextStop.longitud) {
+          nextClientName = nextStop.nombre || nextStop.cliente_nombre || '';
+          wazeUrl = 'https://waze.com/ul?ll=' + nextStop.latitud + ',' + nextStop.longitud + '&navigate=yes';
+        }
 
         // Google Maps: origin → waypoints intermedios → destination
         var lastStop = orderedClients[orderedClients.length - 1].client;
-        googleMapsUrl = 'https://www.google.com/maps/dir/?api=1';
-        googleMapsUrl += '&origin=' + userPos.lat + ',' + userPos.lng;
-        googleMapsUrl += '&destination=' + lastStop.latitud + ',' + lastStop.longitud;
+        if (lastStop && lastStop.latitud && lastStop.longitud) {
+          googleMapsUrl = 'https://www.google.com/maps/dir/?api=1';
+          googleMapsUrl += '&origin=' + userPos.lat + ',' + userPos.lng;
+          googleMapsUrl += '&destination=' + lastStop.latitud + ',' + lastStop.longitud;
 
-        // Google Maps permite hasta 8 waypoints intermedios (gratuito)
-        var intermediates = orderedClients.slice(0, orderedClients.length - 1);
-        if (intermediates.length > 0) {
-          var wps = intermediates
-            .map(function(item) { return item.client.latitud + ',' + item.client.longitud; })
-            .join('|');
-          googleMapsUrl += '&waypoints=' + encodeURIComponent(wps);
+          // Google Maps permite hasta 8 waypoints intermedios (gratuito)
+          var intermediates = orderedClients.slice(0, orderedClients.length - 1);
+          if (intermediates.length > 0) {
+            var wps = intermediates
+              .filter(function(item) { return item.client && item.client.latitud && item.client.longitud; })
+              .map(function(item) { return item.client.latitud + ',' + item.client.longitud; })
+              .join('|');
+            if (wps) googleMapsUrl += '&waypoints=' + encodeURIComponent(wps);
+          }
         }
       }
 

@@ -241,6 +241,10 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       rutaActivaRef.current = false;
       setRutaInfo(null);
       setTotalInicial(null);
+      // Resetear el mapa para que vuelva a aceptar SET_MARKERS
+      if (iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({ type: 'RESET_ROUTE' }, '*');
+      }
       return;
     }
     calcularRutaOptima();
