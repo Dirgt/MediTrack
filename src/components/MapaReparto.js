@@ -365,8 +365,8 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
           />
         </div>
 
-        {/* Controles flotantes — visibles solo en modo reparto para REPARTIDORES */}
-        {modoReparto && !isAdmin && (
+        {/* Controles flotantes — visibles en modo reparto para todos los roles */}
+        {modoReparto && (
           <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 10, width: '92%' }}>
 
             {/* Badge km/tiempo */}
