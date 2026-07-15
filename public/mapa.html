@@ -261,25 +261,39 @@
       markers = [];
 
       // Reconstruir orden óptimo de clientes
-      // waypoints[0] = userPos (origin), waypoints[1..N] = clientes
-      // waypoint_index = orden de visita real (1, 2, 3...)
-      // original_index = posición en el arreglo coords (0=userPos, 1..N=clientsByIndex)
+      // OSRM devuelve waypoints con:
+      //   original_index: posición en el array de coords que enviamos (0=userPos, 1..N=clientes)
+      //   waypoint_index: posición en el viaje óptimo (0=primero en recorrer, 1=segundo, etc.)
+      // Para obtener el orden correcto: ordenar waypoints por waypoint_index y saltar userPos
+
+      var sortedWaypoints = waypoints.slice().sort(function(a, b) { return a.waypoint_index - b.waypoint_index; });
+
+      // DEBUG: ver qué devuelve OSRM exactamente
+      console.log('[OSRM] waypoints:', JSON.stringify(waypoints));
+      console.log('[OSRM] sortedWaypoints:', JSON.stringify(sortedWaypoints));
+      console.log('[OSRM] clientsByIndex count:', clientsByIndex.length);
+
       var orderedClients = [];
-      for (var i = 0; i < waypoints.length; i++) {
-        var wp = waypoints[i];
-        if (wp.original_index === 0) continue; // Saltar userPos
-        var clientIdx = wp.original_index - 1;
+      sortedWaypoints.forEach(function(wp) {
+        if (wp.original_index === 0) return; // Saltar userPos (primer coord enviado)
+        var clientIdx = wp.original_index - 1; // -1 porque coords[0] = userPos
         var c = clientsByIndex[clientIdx];
         if (c) {
-          // waypoint_index de OSRM incluye el origen (0), guardamos el orden real entre clientes
-          orderedClients.push({ client: c, order: wp.waypoint_index });
+          orderedClients.push({ client: c, displayOrder: orderedClients.length + 1 });
         } else {
-          console.warn('OSRM devolvió un original_index no mapeado:', wp.original_index);
+          console.warn('[OSRM] original_index sin cliente mapeado:', wp.original_index);
         }
+      });
+
+      // Si OSRM no devolvió waypoints útiles, usar el orden original como fallback
+      if (orderedClients.length === 0) {
+        console.warn('[OSRM] Fallback: usando orden original de clientes');
+        clientsByIndex.forEach(function(c, idx) {
+          orderedClients.push({ client: c, displayOrder: idx + 1 });
+        });
       }
-      orderedClients.sort(function(a, b) { return a.order - b.order; });
-      // Renumerar desde 1 independientemente del waypoint_index de OSRM
-      orderedClients.forEach(function(item, idx) { item.displayOrder = idx + 1; });
+
+      console.log('[OSRM] orderedClients count:', orderedClients.length, orderedClients.map(function(x){ return x.displayOrder + ':' + (x.client.nombre || x.client.cliente_nombre); }));
 
       // Redibujar pines numerados y calcular bounds
       var bounds = [[userPos.lat, userPos.lng]];
@@ -293,6 +307,13 @@
           bounds.push([c.latitud, c.longitud]);
         }
       });
+
+      // Re-dibujar punto azul del usuario encima de los marcadores numerados
+      if (userMarker) map.removeLayer(userMarker);
+      userMarker = L.marker([userPos.lat, userPos.lng], { icon: makeUserIcon() })
+        .bindPopup('<b style="font-size:13px">📍 Mi ubicación</b>')
+        .addTo(map);
+
       // Marcar ruta como activa para proteger los marcadores numerados
       routeActive = true;
 
