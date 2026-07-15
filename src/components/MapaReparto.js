@@ -171,18 +171,14 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       hasFittedBoundsRef.current = true;
     }
 
-    const clientesParaRuta = modoReparto
-      ? safePedidos.filter(p => p && p.latitud && p.longitud)
-      : clientesData.filter(c => c && c.latitud && c.longitud);
-
     iframeRef.current.contentWindow.postMessage({
       type: 'SET_MARKERS',
-      clientes: clientesParaRuta,
+      clientes: clientesData.filter(c => c && c.latitud && c.longitud),
       usuarios: usuariosData,
       userPos,
       fitBounds: shouldFitBounds
     }, '*');
-  }, [mapReady, clientesData, usuariosData, userPos, modoReparto, safePedidos]);
+  }, [mapReady, clientesData, usuariosData, userPos]);
 
   // Hook vacío para mantener la cantidad de hooks
   useEffect(() => {}, []);
@@ -245,7 +241,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   };
 
   // ── Datos derivados ──
-  const clientesBase = modoReparto ? safePedidos : (clientesData || []);
+  const clientesBase = clientesData || [];
   const ubicadas = clientesBase.filter(c => c && c.latitud && c.longitud);
   const sinUbicar = clientesBase.filter(c => c && (!c.latitud || !c.longitud));
 
@@ -253,7 +249,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   const pedidosUbicados = safePedidos.filter(p => p && p.latitud && p.longitud);
   const pedidosSinUbicar = safePedidos.filter(p => p && (!p.latitud || !p.longitud));
 
-  const fuenteBusqueda = modoReparto ? safePedidos : clientesData;
+  const fuenteBusqueda = clientesData;
 
   const sugerencias = textoBusqueda.length > 0
     ? fuenteBusqueda.filter(c => {
