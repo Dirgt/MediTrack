@@ -30,6 +30,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   const [routeError, setRouteError] = useState(null);
   const [totalInicial, setTotalInicial] = useState(null);
   const rutaActivaRef = useRef(false); // Espejo de rutaActiva sin causar cambio de tamaño en dep arrays
+  const hasFittedBoundsRef = useRef(false); // Evitar que el mapa salte cada vez que entra un GPS
 
   // Modo de operación: si le pasan la prop 'pedidos' (incluso vacía), es 'reparto'.
   // Si no se la pasan (es undefined), es 'gestion' (admin de ubicaciones).
@@ -156,11 +157,18 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   useEffect(() => {
     if (!mapReady || !iframeRef.current?.contentWindow) return;
     if (rutaActivaRef.current) return;
+    
+    const shouldFitBounds = !hasFittedBoundsRef.current;
+    if (clientesData.length > 0 || usuariosData.length > 0) {
+      hasFittedBoundsRef.current = true;
+    }
+
     iframeRef.current.contentWindow.postMessage({
       type: 'SET_MARKERS',
       clientes: clientesData.filter(c => c.latitud && c.longitud),
       usuarios: usuariosData,
       userPos,
+      fitBounds: shouldFitBounds
     }, '*');
   }, [mapReady, clientesData, usuariosData, userPos]);
 

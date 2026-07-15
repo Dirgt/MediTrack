@@ -159,10 +159,12 @@
         bounds.push([data.userPos.lat, data.userPos.lng]);
       }
 
-      if (bounds.length > 1) {
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-      } else if (bounds.length === 1) {
-        map.setView(bounds[0], 15);
+      if (data.fitBounds !== false) {
+        if (bounds.length > 1) {
+          map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+        } else if (bounds.length === 1) {
+          map.setView(bounds[0], 15);
+        }
       }
     }
 
