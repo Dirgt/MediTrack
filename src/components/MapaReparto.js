@@ -171,14 +171,18 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       hasFittedBoundsRef.current = true;
     }
 
+    const clientesParaRuta = modoReparto
+      ? safePedidos.filter(p => p && p.latitud && p.longitud)
+      : clientesData.filter(c => c && c.latitud && c.longitud);
+
     iframeRef.current.contentWindow.postMessage({
       type: 'SET_MARKERS',
-      clientes: clientesData.filter(c => c.latitud && c.longitud),
+      clientes: clientesParaRuta,
       usuarios: usuariosData,
       userPos,
       fitBounds: shouldFitBounds
     }, '*');
-  }, [mapReady, clientesData, usuariosData, userPos]);
+  }, [mapReady, clientesData, usuariosData, userPos, modoReparto, safePedidos]);
 
   // Hook vacío para mantener la cantidad de hooks
   useEffect(() => {}, []);
@@ -192,8 +196,8 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     }
 
     const clientesParaRuta = modoReparto
-      ? safePedidos.filter(p => p.latitud && p.longitud)
-      : clientesData.filter(c => c.latitud && c.longitud);
+      ? safePedidos.filter(p => p && p.latitud && p.longitud)
+      : clientesData.filter(c => c && c.latitud && c.longitud);
 
     if (clientesParaRuta.length === 0) {
       setRouteError('No hay clientes con GPS para calcular la ruta.');
@@ -241,18 +245,21 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   };
 
   // ── Datos derivados ──
-  const clientesBase = clientesData;
-  const ubicadas = clientesBase.filter(c => c.latitud && c.longitud);
-  const sinUbicar = clientesBase.filter(c => !c.latitud || !c.longitud);
+  const clientesBase = modoReparto ? safePedidos : (clientesData || []);
+  const ubicadas = clientesBase.filter(c => c && c.latitud && c.longitud);
+  const sinUbicar = clientesBase.filter(c => c && (!c.latitud || !c.longitud));
 
   // Datos específicos de los pedidos del repartidor actual (para alertas y rutas)
-  const pedidosUbicados = safePedidos.filter(p => p.latitud && p.longitud);
-  const pedidosSinUbicar = safePedidos.filter(p => !p.latitud || !p.longitud);
+  const pedidosUbicados = safePedidos.filter(p => p && p.latitud && p.longitud);
+  const pedidosSinUbicar = safePedidos.filter(p => p && (!p.latitud || !p.longitud));
 
-  const fuenteBusqueda = clientesData;
+  const fuenteBusqueda = modoReparto ? safePedidos : clientesData;
 
   const sugerencias = textoBusqueda.length > 0
-    ? fuenteBusqueda.filter(c => c.nombre && c.nombre.toLowerCase().includes(textoBusqueda.toLowerCase())).slice(0, 8)
+    ? fuenteBusqueda.filter(c => {
+        const nombre = c.nombre || c.cliente_nombre;
+        return nombre && nombre.toLowerCase().includes(textoBusqueda.toLowerCase());
+      }).slice(0, 8)
     : [];
 
   // Progreso de jornada
