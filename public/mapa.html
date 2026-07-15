@@ -97,8 +97,10 @@
   }
 
   function popupHTML(c) {
+    var nombre = c.nombre || c.cliente_nombre || 'Desconocido';
+    var cid = c.id || c.cliente_id;
     var html = '<div style="font-family:system-ui">';
-    html += '<b style="font-size:14px;color:#0f172a">' + c.nombre + '</b>';
+    html += '<b style="font-size:14px;color:#0f172a">' + nombre + '</b>';
     if (c.direccion) html += '<br><span style="font-size:12px;color:#64748b">📍 ' + c.direccion + '</span>';
     if (c.ciudad) html += '<br><span style="font-size:12px;color:#64748b">🏙️ ' + c.ciudad + '</span>';
     if (c.telefono) html += '<br><span style="font-size:12px;color:#64748b">📞 ' + c.telefono + '</span>';
@@ -106,7 +108,7 @@
     html += '<a href="https://waze.com/ul?ll=' + c.latitud + ',' + c.longitud + '&navigate=yes" target="_blank" rel="noopener" class="btn-nav btn-waze">🧭 Waze</a>';
     html += '<a href="https://www.google.com/maps/dir/?api=1&destination=' + c.latitud + ',' + c.longitud + '" target="_blank" rel="noopener" class="btn-nav btn-maps">📍 Maps</a>';
     html += '</div>';
-    html += '<button class="btn-update" onclick="requestUpdateLocation(\'' + c.id + '\',\'' + c.nombre.replace(/'/g, "\\'") + '\')">🔄 Actualizar ubicación</button>';
+    html += '<button class="btn-update" onclick="requestUpdateLocation(\'' + cid + '\',\'' + nombre.replace(/'/g, "\\'") + '\')">🔄 Actualizar ubicación</button>';
     html += '</div>';
     return html;
   }

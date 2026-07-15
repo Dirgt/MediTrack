@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import GuardarUbicacionModal from '@/components/GuardarUbicacionModal';
+import { useUser } from '@/context/UserContext';
 
 const STORAGE_KEY = 'meditrack_ruta';
 
@@ -14,6 +15,9 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   const [clientesData, setClientesData] = useState([]);
   const [usuariosData, setUsuariosData] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const { profile } = useUser();
+  const isAdmin = profile?.role === 'admin';
 
   const [textoBusqueda, setTextoBusqueda] = useState('');
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
@@ -45,7 +49,8 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   }, []);
 
   const fetchTodosLosUsuarios = useCallback(async () => {
-    if (modoReparto) return; 
+    // Solo omitimos fetch si estamos en modo reparto y NO somos administradores
+    if (modoReparto && !isAdmin) return; 
 
     const { data } = await supabase
       .from('profiles')
@@ -56,7 +61,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
        const validos = data.filter(u => u.latitud && u.longitud && new Date(u.ultima_actualizacion) > twelveHoursAgo);
        setUsuariosData(validos);
     }
-  }, [modoReparto]);
+  }, [modoReparto, isAdmin]);
 
   // Cargar todos los clientes siempre
   useEffect(() => {
@@ -67,7 +72,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
 
   // Escuchar cambios realtime en profiles (GPS)
   useEffect(() => {
-    if (modoReparto) return;
+    if (modoReparto && !isAdmin) return;
     const subscription = supabase
       .channel('public:profiles_gps')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => {
@@ -75,7 +80,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       })
       .subscribe();
     return () => { supabase.removeChannel(subscription); };
-  }, [modoReparto, fetchTodosLosUsuarios]);
+  }, [modoReparto, isAdmin, fetchTodosLosUsuarios]);
 
   // Restaurar ruta previa desde localStorage
   useEffect(() => {
@@ -352,8 +357,8 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
           />
         </div>
 
-        {/* Controles flotantes — visibles solo en modo reparto */}
-        {modoReparto && (
+        {/* Controles flotantes — visibles solo en modo reparto para REPARTIDORES */}
+        {modoReparto && !isAdmin && (
           <div style={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 10, width: '92%' }}>
 
             {/* Badge km/tiempo */}
