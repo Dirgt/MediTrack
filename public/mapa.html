@@ -66,6 +66,36 @@
     });
   }
 
+  function makeRepartidorIcon() {
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#0284c7);border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:17px;">🏍️</div>',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -22]
+    });
+  }
+
+  function makeVendedorIcon() {
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:17px;">💼</div>',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -22]
+    });
+  }
+
+  function makeAdminIcon() {
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#6d28d9);border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:17px;">🛡️</div>',
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+      popupAnchor: [0, -22]
+    });
+  }
+
   function popupHTML(c) {
     var html = '<div style="font-family:system-ui">';
     html += '<b style="font-size:14px;color:#0f172a">' + c.nombre + '</b>';
@@ -100,6 +130,22 @@
             .addTo(map);
           markers.push(m);
           bounds.push([c.latitud, c.longitud]);
+        }
+      });
+
+      (data.usuarios || []).forEach(function(u) {
+        if (u.latitud && u.longitud) {
+          var icon = makeVendedorIcon();
+          if (u.role === 'repartidor') icon = makeRepartidorIcon();
+          if (u.role === 'admin') icon = makeAdminIcon();
+          
+          var popupStr = '<div style="font-family:system-ui"><b style="font-size:14px;color:#0f172a">' + (u.nombre_completo || 'Usuario') + '</b><br><span style="font-size:12px;color:#64748b">' + (u.role || '').toUpperCase() + '</span><br><span style="font-size:11px;color:#94a3b8">GPS: ' + new Date(u.ultima_actualizacion).toLocaleTimeString() + '</span></div>';
+          
+          var m = L.marker([u.latitud, u.longitud], { icon: icon })
+            .bindPopup(popupStr, { maxWidth: 270 })
+            .addTo(map);
+          markers.push(m);
+          bounds.push([u.latitud, u.longitud]);
         }
       });
 

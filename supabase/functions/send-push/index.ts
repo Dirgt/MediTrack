@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-export default {
+const handler = {
   async fetch(req: Request) {
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
@@ -127,3 +127,5 @@ export default {
     }
   }
 };
+
+export default handler;

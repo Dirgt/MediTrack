@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import NotificationListener from '@/components/NotificationListener';
 
 import PushPermissionButton from '@/components/PushPermissionButton';
+import SilentTracker from '@/components/SilentTracker';
 
 function InnerWrapper({ children }) {
   const pathname = usePathname();
@@ -37,6 +38,7 @@ function InnerWrapper({ children }) {
               : { maxWidth: '1200px', marginLeft: 'auto', marginRight: 'auto', paddingTop: '20px', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '90px' }
         }>
           {!isLogin && <PushPermissionButton />}
+          <SilentTracker />
           {children}
         </main>
         <Navigation />

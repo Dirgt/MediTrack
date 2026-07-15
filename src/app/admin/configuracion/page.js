@@ -65,6 +65,7 @@ export default function ConfiguracionAdmin() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
     if (tab && ['usuarios', 'clientes', 'general'].includes(tab)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(tab);
     }
   }, []);
@@ -584,7 +585,7 @@ export default function ConfiguracionAdmin() {
 
                         {/* Info */}
                         <div style={{ flex:1, minWidth:0 }}>
-                          <p style={{ fontWeight:700, color:'var(--brand-dark)', fontSize:15, margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          <p style={{ fontWeight:700, color:'var(--brand-dark)', fontSize:15, margin:0, wordBreak:'break-word', lineHeight: 1.2 }}>
                             {u.nombre_completo || 'Sin nombre'}
                           </p>
                           <span style={{
@@ -781,7 +782,7 @@ export default function ConfiguracionAdmin() {
                                             🏪
                                           </div>
                                           <div style={{ flex:1, minWidth:0 }}>
-                                            <p style={{ margin:0, fontWeight:700, fontSize:15, color:'var(--brand-dark)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                            <p style={{ margin:0, fontWeight:700, fontSize:15, color:'var(--brand-dark)', wordBreak:'break-word', lineHeight: 1.2 }}>
                                               {c.nombre}
                                             </p>
                                             {c.ciudad && <p style={{ margin:0, fontSize:12, color:'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>📍 {c.ciudad}</p>}
@@ -982,7 +983,7 @@ export default function ConfiguracionAdmin() {
                 <span style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', fontSize:16, opacity:.5 }}>🔍</span>
               </div>
               <button onClick={() => { setShowClientForm(true); setEditingClientId(null); setClientFormData({ nombre:'', telefono:'', ciudad:'', vendedor_id:'' }); }} className="btn-primary" style={{
-                borderRadius:14, padding:'0 18px', fontSize:14, fontWeight:700, whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:6,
+                borderRadius:14, padding:'0 18px', fontSize:14, fontWeight:700, whiteSpace:'normal', wordBreak:'break-word', lineHeight:1.2, display:'flex', alignItems:'center', gap:6,
               }}>
                 <span style={{ fontSize:18, lineHeight:1 }}>＋</span> Nuevo
               </button>
@@ -1103,7 +1104,7 @@ export default function ConfiguracionAdmin() {
               <div style={{ textAlign:'center', padding:'60px 20px', background:'rgba(255,255,255,0.5)', borderRadius:28, border:'2px dashed rgba(0,0,0,0.05)' }}>
                 <span style={{ fontSize:56, display:'block', marginBottom:16 }}>🏪</span>
                 <p style={{ color:'var(--text-muted)', fontSize:16, fontWeight:600, margin:0 }}>No hay clientes registrados.</p>
-                <p style={{ color:'#94a3b8', fontSize:13, marginTop:6 }}>Agrega tu primer cliente con el botón 'Nuevo' arriba.</p>
+                <p style={{ color:'#94a3b8', fontSize:13, marginTop:6 }}>Agrega tu primer cliente con el botón &apos;Nuevo&apos; arriba.</p>
               </div>
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
@@ -1130,7 +1131,7 @@ export default function ConfiguracionAdmin() {
                       🏪
                     </div>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <p style={{ margin:0, fontSize:17, fontWeight:900, color:'#084032', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', letterSpacing:'-0.3px' }}>
+                      <p style={{ margin:0, fontSize:17, fontWeight:900, color:'#084032', wordBreak:'break-word', lineHeight: 1.2, letterSpacing:'-0.3px' }}>
                         {c.nombre}
                       </p>
                       <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:6, flexWrap:'wrap' }}>

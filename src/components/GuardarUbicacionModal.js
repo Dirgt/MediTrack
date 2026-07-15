@@ -13,11 +13,12 @@ export default function GuardarUbicacionModal({ cliente, usuarioId, onClose, onS
   const [direccionBusqueda, setDireccionBusqueda] = useState(cliente.direccion || '');
   const [buscandoDireccion, setBuscandoDireccion] = useState(false);
   const iframeRef = useRef(null);
-  const gpsObtained = useRef(false);
+  const [gpsObtained, setGpsObtained] = useState(false);
 
   // Obtener ubicación GPS real al abrir el modal
   useEffect(() => {
     if (!navigator.geolocation) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGpsLoading(false);
       return;
     }
@@ -26,7 +27,7 @@ export default function GuardarUbicacionModal({ cliente, usuarioId, onClose, onS
       (position) => {
         const newLat = position.coords.latitude;
         const newLng = position.coords.longitude;
-        gpsObtained.current = true;
+        setGpsObtained(true);
         setPos({ lat: newLat, lng: newLng });
 
         // Si el iframe ya cargó, mover el mapa a la posición GPS
@@ -156,7 +157,7 @@ export default function GuardarUbicacionModal({ cliente, usuarioId, onClose, onS
             <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb' }}>Obteniendo tu ubicación GPS...</span>
           </div>
         )}
-        {!gpsLoading && gpsObtained.current && (
+        {!gpsLoading && gpsObtained && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', marginBottom: 10, background: '#f0fdf4', borderRadius: 12, border: '1px solid #bbf7d0' }}>
             <span style={{ fontSize: 14 }}>✅</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#16a34a' }}>Ubicación GPS obtenida — ajusta el pin si es necesario</span>

@@ -288,7 +288,7 @@ export default function DetallePedido({ params }) {
                       <p style={{ margin:'0 0 2px', fontSize:13, fontWeight:700, color:'#084032' }}>
                         {ESTADO[h.estado_anterior]?.label || h.estado_anterior} → <span style={{ color: cfgN.color }}>{ESTADO[h.estado_nuevo]?.label || h.estado_nuevo}</span>
                       </p>
-                      {h.nota_interna && <p style={{ margin:'0 0 2px', fontSize:12, color:'#64748b' }}>"{h.nota_interna}"</p>}
+                      {h.nota_interna && <p style={{ margin:'0 0 2px', fontSize:12, color:'#64748b' }}>&quot;{h.nota_interna}&quot;</p>}
                       <p style={{ margin:0, fontSize:11, color:'#9ca3af' }}>
                         {h.profiles?.nombre_completo && `${h.profiles.nombre_completo} · `}
                         {new Date(h.creado_en).toLocaleString('es-CO', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}

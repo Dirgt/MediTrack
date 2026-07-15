@@ -20,7 +20,10 @@ export default function VistaReparto() {
   const [isClient, setIsClient] = useState(false);
   const [ordenRuta, setOrdenRuta] = useState([]);
 
-  useEffect(() => { setIsClient(true); }, []);
+  useEffect(() => { 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsClient(true); 
+  }, []);
 
   // fetchPedidos como useCallback para que el useEffect capture la referencia estable
   // y el canal de Realtime no use un closure obsoleto al reactivarse
@@ -29,12 +32,17 @@ export default function VistaReparto() {
     setLoading(true);
     try {
       // 1. Cargar pedidos
-      const { data: ordersData, error: ordersError } = await supabase
+      let query = supabase
         .from('orders')
         .select('id, cliente_nombre, localidad, tipo_pago, estado, actualizado_en, fecha_entrega, observaciones, order_items(medicamento_nombre, cantidad)')
-        .eq('repartidor_id', user.id)
         .eq('estado', 'en_camino')
         .order('actualizado_en', { ascending: false });
+
+      if (profile?.role !== 'admin') {
+        query = query.eq('repartidor_id', user.id);
+      }
+
+      const { data: ordersData, error: ordersError } = await query;
 
       if (ordersError) throw ordersError;
 
@@ -62,10 +70,11 @@ export default function VistaReparto() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user, profile]);
 
   useEffect(() => {
     if (!user) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPedidos();
 
     // Canal de Realtime — usa fetchPedidos estable (useCallback) para evitar closure viejo
@@ -173,7 +182,7 @@ export default function VistaReparto() {
       {/* Repartidor ve modo ruta con sus pedidos activos.                  */}
       {activeTab === 'mapa' && isClient && (
         <MapaReparto
-          pedidos={profile?.role === 'admin' ? undefined : pedidos}
+          pedidos={pedidos}
           usuarioId={user.id}
           onUbicacionGuardada={handleUbicacionGuardada}
           onOrdenCalculado={profile?.role !== 'admin' ? handleOrdenCalculado : undefined}

@@ -386,6 +386,7 @@ export default function MisPedidos() {
   const [modalData, setModalData]     = useState(null);
   const [modalRecaudo, setModalRecaudo] = useState(null); // Para la confirmación de entrega con recaudo
   const [modalCancelar, setModalCancelar] = useState(null);
+  const [motivoCancelInput, setMotivoCancelInput] = useState('');
   const [pedidoDetalle, setPedidoDetalle] = useState(null);
   const [historial, setHistorial]     = useState({});
   const [loadingAction, setLoadingAction] = useState(null);
@@ -451,22 +452,26 @@ export default function MisPedidos() {
   // ── Fetch contadores globales (siempre totales reales, sin filtro de estado) ──
   const fetchContadores = useCallback(async () => {
     if (!user) return;
-    let q = supabase.from('orders').select('estado');
-    q = aplicarFiltrosBase(q);
-    // NO se aplica filtroEstado — las cards muestran siempre el panorama global
-    const { data } = await q;
-    if (data) {
-      setContadoresGlobales({
-        total:      data.length,
-        pendientes: data.filter(p => p.estado === 'pendiente').length,
-        alistando:  data.filter(p => p.estado === 'alistando').length,
-        facturando: data.filter(p => p.estado === 'facturando').length,
-        enRuta:     data.filter(p => p.estado === 'en_camino').length,
-        entregados: data.filter(p => p.estado === 'entregado').length,
-        rechazados: data.filter(p => p.estado === 'rechazado_puerta').length,
-        reintentos: data.filter(p => p.estado === 'programado_reintento').length,
-        cancelados: data.filter(p => p.estado === 'cancelado').length,
-      });
+    try {
+      let q = supabase.from('orders').select('estado');
+      q = aplicarFiltrosBase(q);
+      // NO se aplica filtroEstado — las cards muestran siempre el panorama global
+      const { data } = await q;
+      if (data) {
+        setContadoresGlobales({
+          total:      data.length,
+          pendientes: data.filter(p => p.estado === 'pendiente').length,
+          alistando:  data.filter(p => p.estado === 'alistando').length,
+          facturando: data.filter(p => p.estado === 'facturando').length,
+          enRuta:     data.filter(p => p.estado === 'en_camino').length,
+          entregados: data.filter(p => p.estado === 'entregado').length,
+          rechazados: data.filter(p => p.estado === 'rechazado_puerta').length,
+          reintentos: data.filter(p => p.estado === 'programado_reintento').length,
+          cancelados: data.filter(p => p.estado === 'cancelado').length,
+        });
+      }
+    } catch (err) {
+      console.error('Error cargando contadores:', err);
     }
   }, [user, aplicarFiltrosBase]);
 
@@ -474,37 +479,66 @@ export default function MisPedidos() {
   const fetchPedidos = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    let q = supabase
-      .from('orders')
-      .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
-               observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
-               intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
-               recaudo_metodo, recaudo_valor,
-               order_items(medicamento_nombre, cantidad),
-               profiles!orders_vendedor_id_fkey(id, nombre_completo),
-               repartidor:profiles!orders_repartidor_id_fkey(nombre_completo)`, { count: 'exact' })
-      .order('creado_en', { ascending: false });
+    try {
+      let q = supabase
+        .from('orders')
+        .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
+                 observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
+                 intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
+                 recaudo_metodo, recaudo_valor,
+                 order_items(medicamento_nombre, cantidad),
+                 profiles!orders_vendedor_id_fkey(id, nombre_completo),
+                 repartidor:profiles!orders_repartidor_id_fkey(nombre_completo)`, { count: 'exact' })
+        .order('creado_en', { ascending: false });
 
-    // Aplicar filtros comunes
-    q = aplicarFiltrosBase(q);
+      // Aplicar filtros comunes
+      q = aplicarFiltrosBase(q);
 
-    // Filtro de estado
-    if (filtroEstado !== 'todos') {
-      q = q.eq('estado', filtroEstado);
+      // Filtro de estado
+      if (filtroEstado !== 'todos') {
+        q = q.eq('estado', filtroEstado);
+      }
+
+      // Paginación
+      const from = (pagina - 1) * porPagina;
+      const to = from + porPagina - 1;
+      q = q.range(from, to);
+
+      const { data, count } = await q;
+      if (data) {
+        setPedidos(data);
+        setTotalRegistros(count || 0);
+      }
+    } catch (err) {
+      console.error('Error cargando pedidos:', err);
+    } finally {
+      setLoading(false);
     }
-
-    // Paginación
-    const from = (pagina - 1) * porPagina;
-    const to = from + porPagina - 1;
-    q = q.range(from, to);
-
-    const { data, count } = await q;
-    if (data) {
-      setPedidos(data);
-      setTotalRegistros(count || 0);
-    }
-    setLoading(false);
   }, [user, aplicarFiltrosBase, filtroEstado, pagina, porPagina]);
+
+  const historialCacheRef = useRef(new Set());
+
+  // Sync ref with state so the cache check is always up-to-date
+  useEffect(() => {
+    historialCacheRef.current = new Set(Object.keys(historial));
+  }, [historial]);
+
+  const fetchHistorial = useCallback(async (orderId, force = false) => {
+    if (!force && historialCacheRef.current.has(orderId)) return;
+    try {
+      const { data } = await supabase
+        .from('order_history')
+        .select(`
+          id, estado_anterior, estado_nuevo, motivo_rechazo, nota_interna, creado_en,
+          profiles!order_history_cambiado_por_fkey(nombre_completo)
+        `)
+        .eq('order_id', orderId)
+        .order('creado_en', { ascending: true });
+      if (data) setHistorial(p => ({ ...p, [orderId]: data }));
+    } catch (err) {
+      console.error('Error cargando historial:', err);
+    }
+  }, []);
 
   // NUEVO: Manejar apertura directa desde URL (ej. desde el Calendario)
   useEffect(() => {
@@ -533,6 +567,7 @@ export default function MisPedidos() {
       };
       fetchDirect();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const fetchClientes = useCallback(async () => {
@@ -554,6 +589,7 @@ export default function MisPedidos() {
   }, [isAdmin]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchClientes();
     
     // Cargar repartidores solo para admin (para el modal de despacho)
@@ -567,7 +603,11 @@ export default function MisPedidos() {
   }, [fetchClientes, isAdmin]);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoading(false); 
+      return; 
+    }
     fetchPedidos();
     fetchContadores();
     const channel = supabase.channel('pedidos_rt_v4')
@@ -594,19 +634,6 @@ export default function MisPedidos() {
   ];
 
   // Acciones
-  const fetchHistorial = async (orderId, force = false) => {
-    if (historial[orderId] && !force) return;
-    const { data } = await supabase
-      .from('order_history')
-      .select(`
-        id, estado_anterior, estado_nuevo, motivo_rechazo, nota_interna, creado_en,
-        profiles!order_history_cambiado_por_fkey(nombre_completo)
-      `)
-      .eq('order_id', orderId)
-      .order('creado_en', { ascending: true });
-    if (data) setHistorial(p => ({ ...p, [orderId]: data }));
-  };
-
   const ejecutarAccion = async (pedido, accion, opciones) => {
     setLoadingAction(pedido.id + accion.a);
     const res = await cambiarEstadoPedido(pedido.id, accion.a, { ...opciones, adminId: user?.id });
@@ -900,11 +927,11 @@ export default function MisPedidos() {
                       <div>
                         {isAdmin && (
                           <div style={{ fontSize:12, fontWeight:700, color:'#64748b', marginBottom:4, display:'flex', alignItems:'center', gap:4 }}>
-                            👤 {pedido.profiles?.nombre_completo}
+                            👤 {pedido.profiles?.nombre_completo || 'Sin asignar'}
                           </div>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#084032' }}>{pedido.cliente_nombre}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#084032', wordBreak: 'break-word', lineHeight: 1.2 }}>{pedido.cliente_nombre}</h3>
                           {pedido.localidad && (
                             <span style={{ fontSize: 10, fontWeight: 800, color: '#0F6E56', background: 'rgba(15,110,86,0.1)', padding: '3px 8px', borderRadius: 8, textTransform: 'uppercase' }}>
                               📍 {pedido.localidad}
@@ -949,11 +976,11 @@ export default function MisPedidos() {
                                🚚 Repartidor: {pedido.repartidor.nombre_completo}
                              </span>
                            )}
-                           {pedido.recaudo_valor > 0 && (
-                             <span style={{ fontSize:12, fontWeight:800, color:'#10b981', background:'rgba(16,185,129,0.1)', padding:'4px 10px', borderRadius:10 }}>
-                               💰 Recaudado: ${pedido.recaudo_valor.toLocaleString()} ({pedido.recaudo_metodo})
-                             </span>
-                           )}
+                           {(pedido.recaudo_valor != null && pedido.recaudo_valor > 0) && (
+                              <span style={{ fontSize:12, fontWeight:800, color:'#10b981', background:'rgba(16,185,129,0.1)', padding:'4px 10px', borderRadius:10 }}>
+                                💰 Recaudado: ${Number(pedido.recaudo_valor).toLocaleString()} ({pedido.recaudo_metodo || 'N/A'})
+                              </span>
+                            )}
                            <span style={{ fontSize:13, color:'#94a3b8', fontWeight:500 }}>
                              {new Date(pedido.creado_en).toLocaleDateString('es-CO', {month:'short', day:'numeric'})}
                            </span>
@@ -1263,14 +1290,17 @@ export default function MisPedidos() {
             <h3 style={{ color:'#dc2626', fontSize:22, fontWeight:800, margin:'0 0 8px', textAlign:'center' }}>❌ Anular Pedido</h3>
             <p style={{ color:'#6b7280', fontSize:15, textAlign:'center', marginBottom:20 }}>{modalCancelar.cliente_nombre}</p>
             
-            <textarea id="motivoCancel" rows={3} placeholder="¿Cuál es el motivo de la cancelación?"
+            <textarea
+              value={motivoCancelInput}
+              onChange={e => setMotivoCancelInput(e.target.value)}
+              rows={3} placeholder="¿Cuál es el motivo de la cancelación?"
               style={{ width:'100%', boxSizing:'border-box', border:'2px solid #fecaca', borderRadius:16, padding:14, fontSize:15, outline:'none', fontFamily:'inherit', resize:'none', marginBottom:20 }} />
             
             <div style={{ display:'flex', gap:12 }}>
-              <button onClick={()=>setModalCancelar(null)} style={{ flex:1, padding:16, background:'#f1f5f9', border:'none', borderRadius:16, color:'#64748b', fontWeight:800, fontSize:15 }}>Volver</button>
+              <button onClick={()=>{ setModalCancelar(null); setMotivoCancelInput(''); }} style={{ flex:1, padding:16, background:'#f1f5f9', border:'none', borderRadius:16, color:'#64748b', fontWeight:800, fontSize:15 }}>Volver</button>
               <button onClick={()=>{
-                const m = document.getElementById('motivoCancel').value;
-                ejecutarCancelar(modalCancelar, m);
+                ejecutarCancelar(modalCancelar, motivoCancelInput);
+                setMotivoCancelInput('');
               }} style={{ flex:1, padding:16, background:'#dc2626', border:'none', borderRadius:16, color:'white', fontWeight:800, fontSize:15, boxShadow:'0 8px 16px rgba(220,38,38,0.3)' }}>Anular Ahora</button>
             </div>
           </div>

@@ -27,6 +27,7 @@ export default function PushPermissionButton() {
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPermissionState('unsupported');
       setLoading(false);
       return;
@@ -128,7 +129,7 @@ export default function PushPermissionButton() {
           fontWeight: 700,
           fontSize: 13,
           cursor: 'pointer',
-          whiteSpace: 'nowrap',
+          wordBreak: 'break-word',
           boxShadow: '0 4px 14px rgba(37,99,235,0.3)'
         }}
       >

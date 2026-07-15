@@ -117,7 +117,7 @@ export default function Navigation() {
       }
       return 0; // Actualizar UI de inmediato
     });
-  }, [showNotifDrawer, profile?.id, esRepartidor]);
+  }, [showNotifDrawer, profile, esRepartidor]);
 
   if (pathname === '/login') return null;
 

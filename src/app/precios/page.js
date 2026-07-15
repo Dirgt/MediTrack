@@ -45,18 +45,20 @@ export default function ListaPrecios() {
 
   useEffect(() => {
     if (!user || isRepartidor) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPrecios();
   }, [user, isRepartidor, fetchPrecios]);
 
   const filteredProductos = useMemo(() => {
     if (!searchTerm) return productos;
     return productos.filter(p => 
-      p.producto.toLowerCase().includes(searchTerm.toLowerCase())
+      (p.producto || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [productos, searchTerm]);
 
   // Al cambiar la búsqueda, reiniciar la cantidad visible
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleCount(50);
   }, [searchTerm]);
 

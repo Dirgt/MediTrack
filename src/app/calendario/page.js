@@ -78,6 +78,7 @@ export default function Calendario() {
 
   useEffect(() => {
     if (!user || !profile) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchMes(currentDate);
 
     const channel = supabase.channel('calendario_rt')
@@ -87,6 +88,7 @@ export default function Calendario() {
       .subscribe();
 
     return () => supabase.removeChannel(channel);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, profile, currentDate]);
 
   useEffect(() => {
@@ -147,7 +149,7 @@ export default function Calendario() {
   const pedidosPorDia = useMemo(() => {
     const map = {};
     pedidos.forEach(p => {
-      if (searchTerm && !p.cliente_nombre.toLowerCase().includes(searchTerm.toLowerCase())) return;
+      if (searchTerm && !(p.cliente_nombre || '').toLowerCase().includes(searchTerm.toLowerCase())) return;
 
       // asumiendo YYYY-MM-DD
       const dateKey = p.fecha_entrega.split('T')[0];
@@ -300,7 +302,7 @@ export default function Calendario() {
                               fontSize:9, fontWeight:700,
                               color: vendorColor ? vendorColor.text : est.color,
                               cursor:'pointer',
-                              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                              wordBreak:'break-word', whiteSpace:'normal', lineHeight: 1.1,
                               boxShadow:'0 1px 2px rgba(0,0,0,0.05)',
                               display:'flex', alignItems:'center', gap:3,
                             }}
@@ -314,7 +316,7 @@ export default function Calendario() {
                                 alignItems:'center', justifyContent:'center', lineHeight:1
                               }}>{initial}</span>
                             )}
-                            <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>
+                            <span style={{ wordBreak:'break-word', display:'inline-block' }}>
                               {est.emoji} #{p.numero_pedido} {p.cliente_nombre}
                             </span>
                           </div>

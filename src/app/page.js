@@ -97,6 +97,7 @@ export default function CrearPedido() {
     const goOffline = () => setIsOffline(true);
     const goOnline = () => setIsOffline(false);
     // Revisar estado inicial
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (typeof navigator !== 'undefined' && !navigator.onLine) setIsOffline(true);
     window.addEventListener('offline', goOffline);
     window.addEventListener('online', goOnline);
@@ -184,7 +185,7 @@ export default function CrearPedido() {
     if (orderErr) { setError(orderErr.message); setIsSubmitting(false); return; }
 
     const { error: itemsErr } = await supabase.from('order_items').insert(
-      items.map(it => ({ order_id: order.id, medicamento_nombre: it.medicamento_nombre, cantidad: parseInt(it.cantidad) }))
+      items.map(it => ({ order_id: order.id, medicamento_nombre: it.medicamento_nombre, cantidad: parseInt(it.cantidad) || 1 }))
     );
 
     setIsSubmitting(false);
@@ -214,11 +215,54 @@ export default function CrearPedido() {
     setTimeout(() => setSuccess(false), 5000);
   };
 
+  // ── Ordenamiento por GPS (Droguerías Cercanas) ──
+  const [userGps, setUserGps] = useState(null);
+
+  useEffect(() => {
+    const checkGps = () => {
+      const isGranted = localStorage.getItem('gps_granted') === 'true';
+      if (isGranted && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          setUserGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        }, () => {});
+      }
+    };
+    
+    checkGps();
+    window.addEventListener('gps_activated', checkGps);
+    return () => window.removeEventListener('gps_activated', checkGps);
+  }, []);
+
+  const calcularDistancia = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radio de la tierra en km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
   const clientesFiltrados = useMemo(() => {
-    return clientes.filter(c =>
-      c.nombre.toLowerCase().includes(deferredSearch.toLowerCase())
+    let filtrados = clientes.filter(c =>
+      (c.nombre || '').toLowerCase().includes((deferredSearch || '').toLowerCase())
     );
-  }, [clientes, deferredSearch]);
+
+    // Si tenemos el GPS del vendedor, ordenamos por distancia
+    if (userGps && userGps.lat && userGps.lng) {
+      filtrados.sort((a, b) => {
+        if (!a.latitud || !a.longitud) return 1; // Sin GPS al fondo
+        if (!b.latitud || !b.longitud) return -1;
+        
+        const distA = calcularDistancia(userGps.lat, userGps.lng, parseFloat(a.latitud), parseFloat(a.longitud));
+        const distB = calcularDistancia(userGps.lat, userGps.lng, parseFloat(b.latitud), parseFloat(b.longitud));
+        return distA - distB;
+      });
+    }
+
+    return filtrados;
+  }, [clientes, deferredSearch, userGps]);
   const clienteSeleccionado = clientes.find(c => c.id === clienteId);
   const totalItems = items.reduce((acc, it) => acc + (parseInt(it.cantidad) || 0), 0);
 
@@ -328,7 +372,7 @@ export default function CrearPedido() {
                   {clienteSeleccionado ? (
                     <>
                       <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand), #1a9b78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'white', fontWeight: 800, flexShrink: 0 }}>
-                        {clienteSeleccionado.nombre[0].toUpperCase()}
+                        {(clienteSeleccionado.nombre?.charAt(0) || '?').toUpperCase()}
                       </div>
                       <div style={{ flex: 1 }}>
                         <p style={{ fontWeight: 700, color: 'var(--brand-dark)', margin: 0, fontSize: 15 }}>{clienteSeleccionado.nombre}</p>
@@ -375,7 +419,7 @@ export default function CrearPedido() {
                         onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
                         <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand), #1a9b78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'white', fontWeight: 800, flexShrink: 0 }}>
-                          {c.nombre[0].toUpperCase()}
+                          {(c.nombre?.charAt(0) || '?').toUpperCase()}
                         </div>
                         <div>
                           <p style={{ fontWeight: 600, color: 'var(--brand-dark)', margin: 0, fontSize: 14 }}>{c.nombre}</p>
@@ -492,8 +536,8 @@ export default function CrearPedido() {
                   <div>
                     <label className="form-label-premium">Tipo de Factura <span style={{ color: '#ef4444' }}>*</span></label>
                     <div style={{ display: 'flex', background: 'white', borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)', padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('remision')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'remision' ? '#0F6E56' : 'transparent', color: tipoFactura === 'remision' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Remisión</button>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('factura_electronica')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'factura_electronica' ? '#0F6E56' : 'transparent', color: tipoFactura === 'factura_electronica' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Electrónica</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('remision')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'remision' ? '#0F6E56' : 'transparent', color: tipoFactura === 'remision' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>Remisión</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoFactura('factura_electronica')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoFactura === 'factura_electronica' ? '#0F6E56' : 'transparent', color: tipoFactura === 'factura_electronica' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>Electrónica</button>
                     </div>
                   </div>
 
@@ -501,8 +545,8 @@ export default function CrearPedido() {
                   <div>
                     <label className="form-label-premium">Tipo de Pago <span style={{ color: '#ef4444' }}>*</span></label>
                     <div style={{ display: 'flex', background: 'white', borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)', padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('contado')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'contado' ? '#0F6E56' : 'transparent', color: tipoPago === 'contado' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Contado</button>
-                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('credito')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'credito' ? '#0F6E56' : 'transparent', color: tipoPago === 'credito' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}>Crédito</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('contado')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'contado' ? '#0F6E56' : 'transparent', color: tipoPago === 'contado' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>Contado</button>
+                      <button type="button" className="btn-dynamic" onClick={() => setTipoPago('credito')} style={{ flex: 1, padding: '10px 6px', border: 'none', borderRadius: 12, backgroundColor: tipoPago === 'credito' ? '#0F6E56' : 'transparent', color: tipoPago === 'credito' ? 'white' : '#64748b', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>Crédito</button>
                     </div>
                   </div>
                 </div>
@@ -640,7 +684,7 @@ export default function CrearPedido() {
           <div style={{ background: 'linear-gradient(135deg, #084032, #0F6E56)', borderRadius: 22, padding: '20px', boxShadow: '0 8px 32px rgba(15,110,86,0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: 18 }}>
               {[
-                { label: 'Cliente', value: clienteSeleccionado ? clienteSeleccionado.nombre.split(' ')[0] : '—' },
+                { label: 'Cliente', value: clienteSeleccionado ? (clienteSeleccionado.nombre || '—').split(' ')[0] : '—' },
                 { label: 'Productos', value: items.length },
                 { label: 'Unidades', value: totalItems },
               ].map(s => (

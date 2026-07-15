@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import GuardarUbicacionModal from '@/components/GuardarUbicacionModal';
 
@@ -12,6 +12,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   const [userPos, setUserPos] = useState(null);
   const [clienteParaUbicar, setClienteParaUbicar] = useState(null);
   const [clientesData, setClientesData] = useState([]);
+  const [usuariosData, setUsuariosData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [textoBusqueda, setTextoBusqueda] = useState('');
@@ -23,13 +24,13 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
   const [rutaInfo, setRutaInfo] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState(null);
-  const totalInicialRef = useRef(null);
+  const [totalInicial, setTotalInicial] = useState(null);
   const rutaActivaRef = useRef(false); // Espejo de rutaActiva sin causar cambio de tamaño en dep arrays
 
   // Modo de operación: si le pasan la prop 'pedidos' (incluso vacía), es 'reparto'.
   // Si no se la pasan (es undefined), es 'gestion' (admin de ubicaciones).
   const modoReparto = pedidos !== undefined;
-  const safePedidos = pedidos || [];
+  const safePedidos = useMemo(() => pedidos || [], [pedidos]);
 
   const fetchTodosLosClientes = useCallback(async () => {
     setLoading(true);
@@ -43,10 +44,38 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     setLoading(false);
   }, []);
 
+  const fetchTodosLosUsuarios = useCallback(async () => {
+    if (modoReparto) return; 
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, role, nombre_completo, latitud, longitud, ultima_actualizacion');
+
+    if (data) {
+       const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+       const validos = data.filter(u => u.latitud && u.longitud && new Date(u.ultima_actualizacion) > twelveHoursAgo);
+       setUsuariosData(validos);
+    }
+  }, [modoReparto]);
+
   // Cargar todos los clientes siempre
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTodosLosClientes();
-  }, [fetchTodosLosClientes]);
+    fetchTodosLosUsuarios();
+  }, [fetchTodosLosClientes, fetchTodosLosUsuarios]);
+
+  // Escuchar cambios realtime en profiles (GPS)
+  useEffect(() => {
+    if (modoReparto) return;
+    const subscription = supabase
+      .channel('public:profiles_gps')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => {
+         fetchTodosLosUsuarios();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(subscription); };
+  }, [modoReparto, fetchTodosLosUsuarios]);
 
   // Restaurar ruta previa desde localStorage
   useEffect(() => {
@@ -54,6 +83,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setRutaInfo(parsed);
         setRutaActiva(true);
       }
@@ -124,9 +154,10 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     iframeRef.current.contentWindow.postMessage({
       type: 'SET_MARKERS',
       clientes: clientesData.filter(c => c.latitud && c.longitud),
+      usuarios: usuariosData,
       userPos,
     }, '*');
-  }, [mapReady, clientesData, userPos]);
+  }, [mapReady, clientesData, usuariosData, userPos]);
 
   // Hook vacío para mantener la cantidad de hooks
   useEffect(() => {}, []);
@@ -149,9 +180,10 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     }
 
     // Guardar el total inicial (solo la primera vez)
-    if (totalInicialRef.current === null) {
-      totalInicialRef.current = modoReparto ? safePedidos.length : clientesParaRuta.length;
-    }
+    setTotalInicial(prev => {
+      if (prev === null) return modoReparto ? safePedidos.length : clientesParaRuta.length;
+      return prev;
+    });
 
     setRouteError(null);
     iframeRef.current.contentWindow.postMessage({
@@ -167,10 +199,11 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     if (safePedidos.length === 0) {
       // Jornada completa: limpiar localStorage
       try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRutaActiva(false);
       rutaActivaRef.current = false;
       setRutaInfo(null);
-      totalInicialRef.current = null;
+      setTotalInicial(null);
       return;
     }
     calcularRutaOptima();
@@ -202,7 +235,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     : [];
 
   // Progreso de jornada
-  const total = totalInicialRef.current;
+  const total = totalInicial;
   const rawCompletadas = total !== null ? total - safePedidos.length : 0;
   const completadas = Math.max(0, rawCompletadas);
   const progresoPct = total ? Math.min(100, Math.max(0, Math.round((completadas / total) * 100))) : 0;

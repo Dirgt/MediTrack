@@ -115,3 +115,16 @@ FOR INSERT WITH CHECK ( (SELECT role FROM profiles WHERE id = auth.uid()) = 'adm
 
 -- Activar realtime para orders
 alter publication supabase_realtime add table orders;
+
+-- 5. Geolocalización de usuarios (rastreo silencioso por interacción)
+ALTER TABLE public.profiles ADD COLUMN latitud numeric;
+ALTER TABLE public.profiles ADD COLUMN longitud numeric;
+ALTER TABLE public.profiles ADD COLUMN ultima_actualizacion timestamp with time zone;
+
+-- Activar realtime para profiles (para ver motos/vendedores moverse en el mapa)
+alter publication supabase_realtime add table profiles;
+
+-- Política: los usuarios pueden actualizar su propia ubicación
+CREATE POLICY "Usuarios actualizan su ubicación" ON public.profiles
+FOR UPDATE USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);

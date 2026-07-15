@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
@@ -45,34 +45,39 @@ export default function DashboardAdmin() {
   });
 
   const fetchStats = useCallback(async () => {
-    const [{ data: pedidos }, { data: clientes }, { data: items }] = await Promise.all([
-      supabase.from('orders').select('id, estado, creado_en, cliente_nombre, vendedor_id, localidad, profiles!orders_vendedor_id_fkey(nombre_completo)').order('creado_en', { ascending: false }),
-      supabase.from('clientes').select('*').eq('activo', true),
-      supabase.from('order_items').select('medicamento_nombre, cantidad'),
-    ]);
+    try {
+      const [{ data: pedidos }, { data: clientes }, { data: items }] = await Promise.all([
+        supabase.from('orders').select('id, estado, creado_en, cliente_nombre, vendedor_id, localidad, profiles!orders_vendedor_id_fkey(nombre_completo)').order('creado_en', { ascending: false }),
+        supabase.from('clientes').select('*').eq('activo', true),
+        supabase.from('order_items').select('medicamento_nombre, cantidad'),
+      ]);
 
-    if (pedidos) setAllPedidos(pedidos);
-    if (clientes) setAllClientes(clientes);
+      if (pedidos) setAllPedidos(pedidos);
+      if (clientes) setAllClientes(clientes);
 
-    // Calcular top medicamentos
-    if (items) {
-      const medMap = {};
-      items.forEach(it => {
-        const key = it.medicamento_nombre?.trim();
-        if (key) medMap[key] = (medMap[key] || 0) + (parseInt(it.cantidad) || 1);
-      });
-      const topMeds = Object.entries(medMap)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([nombre, total]) => ({ nombre, total }));
-      setStats(prev => ({ ...prev, topMedicamentos: topMeds }));
+      // Calcular top medicamentos
+      if (items) {
+        const medMap = {};
+        items.forEach(it => {
+          const key = it.medicamento_nombre?.trim();
+          if (key) medMap[key] = (medMap[key] || 0) + (parseInt(it.cantidad) || 1);
+        });
+        const topMeds = Object.entries(medMap)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([nombre, total]) => ({ nombre, total }));
+        setStats(prev => ({ ...prev, topMedicamentos: topMeds }));
+      }
+    } catch (err) {
+      console.error('Error cargando stats del dashboard:', err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   useEffect(() => {
     if (profile?.role === 'admin') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchStats();
       const channel = supabase.channel('dashboard_rt')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchStats())
@@ -161,17 +166,21 @@ export default function DashboardAdmin() {
     const limit20dISO = limit20d.toISOString();
     const pedidosUltimos20d = allPedidos.filter(p => p.creado_en >= limit20dISO);
     const clientesConPedido = new Set(
-      pedidosUltimos20d.map(p => p.cliente_nombre?.trim().toLowerCase()).filter(Boolean)
+      pedidosUltimos20d.map(p => p.cliente_nombre?.trim()?.toLowerCase()).filter(Boolean)
     );
     const clientesInactivos = allClientes
-      .filter(c => !clientesConPedido.has(c.nombre?.trim().toLowerCase()))
+      .filter(c => !clientesConPedido.has(c.nombre?.trim()?.toLowerCase()))
       .map(c => {
-        const nombreLower = c.nombre?.trim().toLowerCase();
-        const pedidosCliente = allPedidos.filter(p => p.cliente_nombre?.trim().toLowerCase() === nombreLower);
+        const nombreLower = c.nombre?.trim()?.toLowerCase();
+        const pedidosCliente = allPedidos.filter(p => p.cliente_nombre?.trim()?.toLowerCase() === nombreLower);
         const ultimoPedido = pedidosCliente.length > 0
           ? pedidosCliente.reduce((latest, p) => p.creado_en > latest.creado_en ? p : latest).creado_en
           : null;
-        return { ...c, ultimo_pedido: ultimoPedido };
+        return { 
+          ...c, 
+          ultimo_pedido: ultimoPedido,
+          _diasInactivo: ultimoPedido ? Math.floor((Date.now() - new Date(ultimoPedido).getTime()) / (1000 * 60 * 60 * 24)) : null
+        };
       })
       .sort((a, b) => {
         if (!a.ultimo_pedido && !b.ultimo_pedido) return 0;
@@ -180,6 +189,7 @@ export default function DashboardAdmin() {
         return a.ultimo_pedido.localeCompare(b.ultimo_pedido);
       });
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStats(prev => ({
       ...prev,
       totalPedidos, filteredCount, pedidosHoy, tasaEntrega, porEstado, topVendedores, pedidosRecientes, tendencia, maxTrend, criticos, porLocalidad, clientesInactivos
@@ -253,7 +263,7 @@ export default function DashboardAdmin() {
               key={f.id}
               onClick={() => setTimeFilter(f.id)}
               style={{
-                flex: 1, whiteSpace: 'nowrap',
+                flex: 1,
                 padding: '10px 16px', border: 'none', borderRadius: 12,
                 fontSize: 13, fontWeight: 800, cursor: 'pointer',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -527,14 +537,14 @@ export default function DashboardAdmin() {
                         {c.nombre?.[0]?.toUpperCase() || '?'}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nombre}</p>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#0f172a', wordBreak: 'break-word', lineHeight: 1.2 }}>{c.nombre}</p>
                         <p style={{ margin: '2px 0 0', fontSize: 11, color: '#64748b', fontWeight: 500 }}>
                           {c.ciudad || 'Sin localidad'}{c.telefono ? ` • ${c.telefono}` : ''}
                         </p>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         <div style={{ fontSize: 10, fontWeight: 800, color: '#d97706', background: '#fef3c7', padding: '4px 10px', borderRadius: 12, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
-                          {c.ultimo_pedido ? `Hace ${Math.floor((Date.now() - new Date(c.ultimo_pedido).getTime()) / (1000 * 60 * 60 * 24))}d` : 'Sin pedidos'}
+                          {c.ultimo_pedido ? `Hace ${c._diasInactivo}d` : 'Sin pedidos'}
                         </div>
                         {c.ultimo_pedido && (
                           <p style={{ margin: 0, fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>
@@ -567,10 +577,10 @@ export default function DashboardAdmin() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.cliente_nombre}</p>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: '#0f172a', wordBreak: 'break-word', lineHeight: 1.2 }}>{p.cliente_nombre}</p>
                         </div>
                         <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b', fontWeight: 500 }}>
-                          {new Date(p.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} • {p.profiles?.nombre_completo.split(' ')[0] || 'App'}
+                          {new Date(p.creado_en).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} • {p.profiles?.nombre_completo?.split(' ')[0] || 'App'}
                         </p>
                       </div>
                       <div style={{ fontSize: 10, fontWeight: 800, color: cfg.color, background: `${cfg.color}10`, padding: '4px 10px', borderRadius: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
