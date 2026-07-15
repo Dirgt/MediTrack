@@ -96,14 +96,22 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     } catch (_) {}
   }, []);
 
-  // Obtener GPS del repartidor
+  // Obtener GPS del repartidor/admin constantemente
   useEffect(() => {
     if (typeof window === 'undefined' || !navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (p) => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => {},
-      { enableHighAccuracy: true }
+    
+    const watchId = navigator.geolocation.watchPosition(
+      (p) => {
+        setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude });
+        setRouteError(null); // Limpiar error si llega el GPS
+      },
+      (err) => {
+        console.error('Error obteniendo GPS en MapaReparto:', err);
+      },
+      { enableHighAccuracy: true, maximumAge: 0 }
     );
+
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   // Escuchar mensajes del iframe (mapa)
