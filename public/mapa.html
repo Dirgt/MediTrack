@@ -172,6 +172,15 @@
       map.setView([data.lat, data.lng], data.zoom || 13);
     }
 
+    if (data.type === 'UPDATE_USER_POS') {
+      if (data.userPos) {
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = L.marker([data.userPos.lat, data.userPos.lng], { icon: makeUserIcon() })
+          .bindPopup('<b style="font-size:13px">📍 Mi ubicación</b>')
+          .addTo(map);
+      }
+    }
+
     if (data.type === 'CALCULATE_ROUTE') {
       calculateRoute(data.clientes, data.userPos);
     }

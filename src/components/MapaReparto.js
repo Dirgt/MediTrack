@@ -161,14 +161,30 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     return () => window.removeEventListener('message', onMessage);
   }, [clientesData, safePedidos, modoReparto, onOrdenCalculado]);
 
-  // Enviar markers al mapa (todos los clientes) — solo cuando NO hay ruta activa calculada
+  // Enviar marcadores al mapa
   useEffect(() => {
     if (!mapReady || !iframeRef.current?.contentWindow) return;
-    if (rutaActivaRef.current) return;
-    
-    const shouldFitBounds = !hasFittedBoundsRef.current;
-    if (clientesData.length > 0 || usuariosData.length > 0) {
-      hasFittedBoundsRef.current = true;
+
+    if (rutaActiva) {
+      // Si la ruta está activa, solo actualizamos el punto azul del usuario
+      // para no borrar la ruta ni los números de orden
+      iframeRef.current.contentWindow.postMessage({
+        type: 'UPDATE_USER_POS',
+        userPos
+      }, '*');
+      return;
+    }
+
+    let shouldFitBounds = false;
+    if (!hasFittedBoundsRef.current) {
+      if (clientesData.length > 0 || usuariosData.length > 0) {
+        hasFittedBoundsRef.current = true;
+        shouldFitBounds = true;
+      }
+    } else {
+      if (clientesData.length > 0 || usuariosData.length > 0) {
+        hasFittedBoundsRef.current = true;
+      }
     }
 
     iframeRef.current.contentWindow.postMessage({
@@ -178,7 +194,7 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
       userPos,
       fitBounds: shouldFitBounds
     }, '*');
-  }, [mapReady, clientesData, usuariosData, userPos]);
+  }, [mapReady, clientesData, usuariosData, userPos, rutaActiva]);
 
   // Hook vacío para mantener la cantidad de hooks
   useEffect(() => {}, []);
