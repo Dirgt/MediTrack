@@ -230,6 +230,21 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     }, '*');
   }, [mapReady, userPos, modoReparto, safePedidos, clientesData]);
 
+  // ── Cancelar ruta activa ──
+  const cancelarRuta = useCallback(() => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
+    setRutaActiva(false);
+    rutaActivaRef.current = false;
+    setRutaInfo(null);
+    setTotalInicial(null);
+    setRouteError(null);
+    // Decirle al mapa que limpie la ruta y vuelva al modo normal
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: 'RESET_ROUTE' }, '*');
+    }
+    onOrdenCalculado?.([]);
+  }, [onOrdenCalculado]);
+
   // ── Auto-recálculo cuando la lista de pedidos cambia (Realtime) ──
   useEffect(() => {
     if (!rutaActiva || !mapReady || !modoReparto) return;
@@ -427,27 +442,46 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
               </div>
             )}
 
-            {/* Botón principal */}
-            <button
-              id="btn-iniciar-ruta"
-              onClick={calcularRutaOptima}
-              disabled={routeLoading || pedidosUbicados.length === 0}
-              style={{
-                width: '100%', padding: '14px', borderRadius: 100, border: 'none',
-                background: routeLoading || pedidosUbicados.length === 0 ? '#94a3b8' : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
-                color: '#fff', fontSize: 15, fontWeight: 900,
-                cursor: routeLoading || pedidosUbicados.length === 0 ? 'not-allowed' : 'pointer',
-                boxShadow: pedidosUbicados.length > 0 ? '0 8px 25px rgba(37,99,235,0.4)' : 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {routeLoading
-                ? '⏳ Calculando ruta óptima...'
-                : rutaActiva
-                  ? '🔄 Recalcular Ruta'
-                  : '🗺️ Iniciar Ruta Óptima'}
-            </button>
+            {/* Botón principal + Cancelar */}
+            <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+              <button
+                id="btn-iniciar-ruta"
+                onClick={calcularRutaOptima}
+                disabled={routeLoading || pedidosUbicados.length === 0}
+                style={{
+                  flex: rutaActiva ? 3 : 1,
+                  padding: '14px', borderRadius: 100, border: 'none',
+                  background: routeLoading || pedidosUbicados.length === 0 ? '#94a3b8' : 'linear-gradient(135deg,#1d4ed8,#2563eb)',
+                  color: '#fff', fontSize: 15, fontWeight: 900,
+                  cursor: routeLoading || pedidosUbicados.length === 0 ? 'not-allowed' : 'pointer',
+                  boxShadow: pedidosUbicados.length > 0 ? '0 8px 25px rgba(37,99,235,0.4)' : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {routeLoading
+                  ? '⏳ Calculando ruta óptima...'
+                  : rutaActiva
+                    ? '🔄 Recalcular Ruta'
+                    : '🗺️ Iniciar Ruta Óptima'}
+              </button>
+              {rutaActiva && (
+                <button
+                  id="btn-cancelar-ruta"
+                  onClick={cancelarRuta}
+                  style={{
+                    flex: 1, padding: '14px', borderRadius: 100, border: '2px solid #ef4444',
+                    background: '#fff1f2', color: '#dc2626', fontSize: 14, fontWeight: 900,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    transition: 'all 0.2s ease', whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#fecaca'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#fff1f2'; }}
+                >
+                  ✕ Cancelar
+                </button>
+              )}
+            </div>
             {/* Mensaje de ayuda cuando el botón está bloqueado */}
             {!routeLoading && pedidosUbicados.length === 0 && (
               <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#64748b', marginTop: 4, padding: '0 10px' }}>
