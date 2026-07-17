@@ -12,14 +12,16 @@ export default function SilentTracker() {
   const [permisoDenegado, setPermisoDenegado] = useState(false);
 
   // Función para capturar y enviar ubicación con throttle
-  const captureAndSendLocation = () => {
+  const captureAndSendLocation = (force = false) => {
     if (!user) return;
     
     const lastUpdate = localStorage.getItem('last_gps_update');
     const now = new Date().getTime();
     
-    // Throttle de 10 minutos (600,000 ms)
-    if (lastUpdate && now - parseInt(lastUpdate) < 600000) {
+    // Throttle dinámico: 1 minuto para repartidor, 10 min para otros
+    const throttleTime = profile?.role === 'repartidor' ? 60000 : 600000;
+    
+    if (!force && lastUpdate && now - parseInt(lastUpdate) < throttleTime) {
       return; 
     }
 
@@ -114,6 +116,22 @@ export default function SilentTracker() {
     return () => document.removeEventListener('click', handleClick);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // 3. Timer para actualizar GPS automáticamente en segundo plano
+  useEffect(() => {
+    const isGranted = localStorage.getItem('gps_granted') === 'true';
+    if (!isGranted || !user || !profile) return;
+
+    // 1 minuto para repartidores (están en movimiento), 10 minutos para otros (estáticos)
+    const intervalTime = profile.role === 'repartidor' ? 60000 : 600000;
+    
+    const intervalId = setInterval(() => {
+      captureAndSendLocation(true); // Forzar envío al cumplirse el timer exacto
+    }, intervalTime);
+
+    return () => clearInterval(intervalId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, profile]);
 
   if (!needsPrompt || !profile) return null;
   if (pathname === '/login') return null;

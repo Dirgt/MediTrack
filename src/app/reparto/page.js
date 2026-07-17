@@ -10,7 +10,7 @@ import GuardarUbicacionModal from '@/components/GuardarUbicacionModal';
 
 
 export default function VistaReparto() {
-  const { user, profile } = useUser();
+  const { user, profile, loading: authLoading } = useUser();
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalEntrega, setModalEntrega] = useState(null);
@@ -113,6 +113,17 @@ export default function VistaReparto() {
       showToast(res.error, false);
     }
   };
+
+  // Esperar a que la sesión se cargue antes de verificar el rol
+  if (authLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(13,148,136,0.15)', borderTopColor: '#0d9488', animation: 'spin 0.8s linear infinite' }} />
+        <p style={{ color: '#94a3b8', fontSize: 14, fontWeight: 600 }}>Cargando sesión...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    );
+  }
 
   if (!user || (profile?.role !== 'repartidor' && profile?.role !== 'admin')) {
     return <div style={{ padding: 40, textAlign: 'center' }}>Acceso restringido para repartidores.</div>;
@@ -345,9 +356,10 @@ function ModalRecaudo({ pedido, onConfirm, onCancel }) {
   const [metodo, setMetodo] = useState('efectivo');
   const [valor, setValor] = useState('');
   const [observacion, setObservacion] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const esContado = pedido.tipo_pago === 'contado';
 
-  const handleFinal = () => {
+  const handleFinal = async () => {
     const valorNum = parseFloat(valor) || 0;
     
     // Si es contado y no hay dinero, debe haber observación
@@ -355,7 +367,9 @@ function ModalRecaudo({ pedido, onConfirm, onCancel }) {
       return alert('Este pedido es de CONTADO y no has registrado dinero. Por favor, escribe una observación explicando por qué no se recibió el pago.');
     }
     
-    onConfirm(metodo, valor, observacion);
+    setIsSubmitting(true);
+    await onConfirm(metodo, Math.max(0, valorNum), observacion);
+    setIsSubmitting(false);
   };
 
   return (
@@ -420,8 +434,8 @@ function ModalRecaudo({ pedido, onConfirm, onCancel }) {
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#94a3b8' }}>$</span>
               <input
-                type="number" value={valor} onChange={e => setValor(e.target.value)}
-                disabled={metodo === 'pendiente'}
+                type="number" min="0" step="any" value={valor} onChange={e => setValor(e.target.value)}
+                disabled={metodo === 'pendiente' || isSubmitting}
                 placeholder={metodo === 'pendiente' ? 'Sin recaudo' : (esContado ? 'Valor obligatorio' : 'Opcional')}
                 style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 32px', borderRadius: 16, border: '2px solid #f1f5f9', fontSize: 16, fontWeight: 700, outline: 'none', background: metodo === 'pendiente' ? '#f8fafc' : 'white' }}
               />
@@ -447,8 +461,10 @@ function ModalRecaudo({ pedido, onConfirm, onCancel }) {
           flexShrink: 0,
           background: 'white',
         }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '14px', borderRadius: 16, border: '1px solid #e2e8f0', background: 'white', fontWeight: 700, cursor: 'pointer', fontSize: 15 }}>Cancelar</button>
-          <button onClick={handleFinal} style={{ flex: 2, padding: '14px', borderRadius: 16, border: 'none', background: '#0F6E56', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 6px 16px rgba(15,110,86,0.2)', fontSize: 15 }}>Finalizar Entrega ✅</button>
+          <button onClick={onCancel} disabled={isSubmitting} style={{ flex: 1, padding: '14px', borderRadius: 16, border: '1px solid #e2e8f0', background: 'white', fontWeight: 700, cursor: isSubmitting ? 'not-allowed' : 'pointer', fontSize: 15, opacity: isSubmitting ? 0.6 : 1 }}>Cancelar</button>
+          <button onClick={handleFinal} disabled={isSubmitting} style={{ flex: 2, padding: '14px', borderRadius: 16, border: 'none', background: '#0F6E56', color: 'white', fontWeight: 800, cursor: isSubmitting ? 'not-allowed' : 'pointer', boxShadow: isSubmitting ? 'none' : '0 6px 16px rgba(15,110,86,0.2)', fontSize: 15, opacity: isSubmitting ? 0.7 : 1 }}>
+            {isSubmitting ? 'Procesando...' : 'Finalizar Entrega ✅'}
+          </button>
         </div>
       </div>
       <style>{`

@@ -23,15 +23,16 @@
 <script>
 (function() {
   // Inicializar mapa centrado en Colombia
-  var map = L.map('map', { zoomControl: true }).setView([4.658, -74.094], 13);
+  var map = L.map('map', { zoomControl: true, tap: false }).setView([4.658, -74.094], 13);
 
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(map);
 
-  var markers = [];
-  var userMarker = null;
+  var markers = []; // Para clientes o puntos de ruta
+  var userMarkersArr = []; // Para otros usuarios (vendedores, repartidores)
+  var userMarker = null; // Mi propia ubicación
   var routeLayer = null;
   var routeActive = false; // true después de calcular ruta para proteger los marcadores numerados
 
@@ -139,22 +140,6 @@
         }
       });
 
-      (data.usuarios || []).forEach(function(u) {
-        if (u && u.latitud && u.longitud) {
-          var icon = makeVendedorIcon();
-          if (u.role === 'repartidor') icon = makeRepartidorIcon();
-          if (u.role === 'admin') icon = makeAdminIcon();
-          
-          var popupStr = '<div style="font-family:system-ui"><b style="font-size:14px;color:#0f172a">' + (u.nombre_completo || 'Usuario') + '</b><br><span style="font-size:12px;color:#64748b">' + (u.role || '').toUpperCase() + '</span><br><span style="font-size:11px;color:#94a3b8">GPS: ' + new Date(u.ultima_actualizacion).toLocaleTimeString() + '</span></div>';
-          
-          var m = L.marker([u.latitud, u.longitud], { icon: icon })
-            .bindPopup(popupStr, { maxWidth: 270 })
-            .addTo(map);
-          markers.push(m);
-          bounds.push([u.latitud, u.longitud]);
-        }
-      });
-
       if (data.userPos) {
         if (userMarker) map.removeLayer(userMarker);
         userMarker = L.marker([data.userPos.lat, data.userPos.lng], { icon: makeUserIcon() })
@@ -172,16 +157,41 @@
       }
     }
 
+    if (data.type === 'UPDATE_USERS_GPS') {
+      if (routeActive) return;
+      
+      userMarkersArr.forEach(function(m) { map.removeLayer(m); });
+      userMarkersArr = [];
+
+      (data.usuarios || []).forEach(function(u) {
+        if (u && u.latitud && u.longitud) {
+          var icon = makeVendedorIcon();
+          if (u.role === 'repartidor') icon = makeRepartidorIcon();
+          if (u.role === 'admin') icon = makeAdminIcon();
+          
+          var popupStr = '<div style="font-family:system-ui"><b style="font-size:14px;color:#0f172a">' + (u.nombre_completo || 'Usuario') + '</b><br><span style="font-size:12px;color:#64748b">' + (u.role || '').toUpperCase() + '</span><br><span style="font-size:11px;color:#94a3b8">GPS: ' + new Date(u.ultima_actualizacion).toLocaleTimeString() + '</span></div>';
+          
+          var m = L.marker([u.latitud, u.longitud], { icon: icon })
+            .bindPopup(popupStr, { maxWidth: 270 })
+            .addTo(map);
+          userMarkersArr.push(m);
+        }
+      });
+    }
+
     if (data.type === 'SET_CENTER') {
       map.setView([data.lat, data.lng], data.zoom || 13);
     }
 
     if (data.type === 'UPDATE_USER_POS') {
       if (data.userPos) {
-        if (userMarker) map.removeLayer(userMarker);
-        userMarker = L.marker([data.userPos.lat, data.userPos.lng], { icon: makeUserIcon() })
-          .bindPopup('<b style="font-size:13px">📍 Mi ubicación</b>')
-          .addTo(map);
+        if (userMarker) {
+          userMarker.setLatLng([data.userPos.lat, data.userPos.lng]);
+        } else {
+          userMarker = L.marker([data.userPos.lat, data.userPos.lng], { icon: makeUserIcon() })
+            .bindPopup('<b style="font-size:13px">📍 Mi ubicación</b>')
+            .addTo(map);
+        }
       }
     }
 
@@ -194,6 +204,8 @@
       routeActive = false;
       markers.forEach(function(m) { map.removeLayer(m); });
       markers = [];
+      userMarkersArr.forEach(function(m) { map.removeLayer(m); });
+      userMarkersArr = [];
       if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
     }
   });
@@ -259,13 +271,17 @@
       // Limpiar pines anteriores
       markers.forEach(function(m) { map.removeLayer(m); });
       markers = [];
+      userMarkersArr.forEach(function(m) { map.removeLayer(m); });
+      userMarkersArr = [];
 
       // Reconstruir orden óptimo de clientes
-      // OSRM devuelve waypoints con:
-      //   original_index: posición en el array de coords que enviamos (0=userPos, 1..N=clientes)
-      //   waypoint_index: posición en el viaje óptimo (0=primero en recorrer, 1=segundo, etc.)
-      // Para obtener el orden correcto: ordenar waypoints por waypoint_index y saltar userPos
+      // OSRM devuelve el array de waypoints en el mismo orden exacto en que enviamos las coordenadas.
+      // Le inyectamos manualmente su índice original (0=userPos, 1..N=clientes)
+      waypoints.forEach(function(wp, i) {
+        wp.original_index = i;
+      });
 
+      // waypoint_index indica la posición de este punto en el viaje optimizado.
       var sortedWaypoints = waypoints.slice().sort(function(a, b) { return a.waypoint_index - b.waypoint_index; });
 
       // DEBUG: ver qué devuelve OSRM exactamente

@@ -161,28 +161,19 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     return () => window.removeEventListener('message', onMessage);
   }, [clientesData, safePedidos, modoReparto, onOrdenCalculado]);
 
-  // Enviar marcadores al mapa
+  // Enviar marcadores al mapa (solo cuando cambian los datos, NO cuando cambia userPos)
   useEffect(() => {
     if (!mapReady || !iframeRef.current?.contentWindow) return;
-
-    if (rutaActiva) {
-      // Si la ruta está activa, solo actualizamos el punto azul del usuario
-      // para no borrar la ruta ni los números de orden
-      iframeRef.current.contentWindow.postMessage({
-        type: 'UPDATE_USER_POS',
-        userPos
-      }, '*');
-      return;
-    }
+    if (rutaActiva) return; // En modo ruta, no enviar SET_MARKERS
 
     let shouldFitBounds = false;
     if (!hasFittedBoundsRef.current) {
-      if (clientesData.length > 0 || usuariosData.length > 0) {
+      if (clientesData.length > 0) {
         hasFittedBoundsRef.current = true;
         shouldFitBounds = true;
       }
     } else {
-      if (clientesData.length > 0 || usuariosData.length > 0) {
+      if (clientesData.length > 0) {
         hasFittedBoundsRef.current = true;
       }
     }
@@ -190,11 +181,31 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     iframeRef.current.contentWindow.postMessage({
       type: 'SET_MARKERS',
       clientes: clientesData.filter(c => c && c.latitud && c.longitud),
-      usuarios: usuariosData,
       userPos,
       fitBounds: shouldFitBounds
     }, '*');
-  }, [mapReady, clientesData, usuariosData, userPos, rutaActiva]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, clientesData, rutaActiva]);
+
+  // Enviar marcadores de USUARIOS de forma independiente
+  useEffect(() => {
+    if (!mapReady || !iframeRef.current?.contentWindow) return;
+    if (rutaActiva) return; // En modo ruta no mostramos al resto del equipo
+    
+    iframeRef.current.contentWindow.postMessage({
+      type: 'UPDATE_USERS_GPS',
+      usuarios: usuariosData
+    }, '*');
+  }, [mapReady, usuariosData, rutaActiva]);
+
+  // Actualizar solo la posición del usuario (sin recrear marcadores ni cerrar popups)
+  useEffect(() => {
+    if (!mapReady || !iframeRef.current?.contentWindow || !userPos) return;
+    iframeRef.current.contentWindow.postMessage({
+      type: 'UPDATE_USER_POS',
+      userPos
+    }, '*');
+  }, [mapReady, userPos]);
 
   // Hook vacío para mantener la cantidad de hooks
   useEffect(() => {}, []);
