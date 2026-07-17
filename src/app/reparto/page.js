@@ -1,11 +1,21 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
 import { registrarEntregaRepartidor } from '@/app/actions/order_actions';
-import MapaReparto from '@/components/MapaReparto';
 import GuardarUbicacionModal from '@/components/GuardarUbicacionModal';
+
+const MapaReparto = dynamic(() => import('@/components/MapaReparto'), { 
+  ssr: false,
+  loading: () => (
+    <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>
+      <div style={{ width: 30, height: 30, borderRadius: '50%', border: '3px solid rgba(13,148,136,0.15)', borderTopColor: '#0d9488', animation: 'spin 0.8s linear infinite', margin: '0 auto 10px' }} />
+      <p>Cargando mapa...</p>
+    </div>
+  )
+});
 
 
 
