@@ -84,8 +84,27 @@ export default function VistaReparto() {
         schema: 'public', 
         table: 'orders',
         filter: `repartidor_id=eq.${user.id}` 
-      }, () => {
-        fetchPedidos();
+      }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          if (payload.new.estado !== 'en_camino') {
+            // El pedido ya no está en ruta, sacarlo de la RAM
+            setPedidos(prev => prev.filter(p => p.id !== payload.new.id));
+          } else {
+            // Sigue en ruta, actualizamos en RAM o descargamos si es nuevo
+            setPedidos(prev => {
+              const exists = prev.find(p => p.id === payload.new.id);
+              if (exists) {
+                return prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p);
+              } else {
+                fetchPedidos(); // Descargar para traer relaciones (items, cliente lat/lng)
+                return prev;
+              }
+            });
+          }
+        } else {
+          // INSERT o DELETE, hacer full fetch
+          fetchPedidos();
+        }
       })
       .subscribe();
 

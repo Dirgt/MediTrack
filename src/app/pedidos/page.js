@@ -611,10 +611,17 @@ export default function MisPedidos() {
     fetchPedidos();
     fetchContadores();
     const channel = supabase.channel('pedidos_rt_v4')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-        fetchPedidos();
-        fetchContadores();
-        fetchClientes();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          // Optimización: actualización en memoria RAM, evita descargar N pedidos pesados
+          setPedidos(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p));
+          fetchContadores(); // Contadores son ligeros (ahora que hay índice en estado)
+        } else {
+          // Si es INSERT o DELETE, recargamos (para traer relaciones, items, etc.)
+          fetchPedidos();
+          fetchContadores();
+          if (payload.eventType === 'INSERT') fetchClientes();
+        }
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
