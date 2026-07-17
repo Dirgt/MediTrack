@@ -80,7 +80,26 @@ export default function DashboardAdmin() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchStats();
       const channel = supabase.channel('dashboard_rt')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchStats())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            setAllPedidos(prev => {
+              const index = prev.findIndex(p => p.id === payload.new.id);
+              if (index !== -1) {
+                const updated = [...prev];
+                updated[index] = { ...updated[index], ...payload.new };
+                return updated;
+              }
+              return prev;
+            });
+          } else if (payload.eventType === 'INSERT') {
+            const { data } = await supabase.from('orders').select('id, estado, creado_en, cliente_nombre, vendedor_id, localidad, profiles!orders_vendedor_id_fkey(nombre_completo)').eq('id', payload.new.id).single();
+            if (data) {
+              setAllPedidos(prev => [data, ...prev]);
+            }
+          } else if (payload.eventType === 'DELETE') {
+             setAllPedidos(prev => prev.filter(p => p.id !== payload.old.id));
+          }
+        })
         .subscribe();
       return () => supabase.removeChannel(channel);
     }

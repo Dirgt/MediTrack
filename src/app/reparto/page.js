@@ -106,6 +106,7 @@ export default function VistaReparto() {
     });
 
     if (res.success) {
+      window.dispatchEvent(new Event('force_gps_update'));
       showToast('Entrega registrada con éxito');
       setModalEntrega(null);
       fetchPedidos();

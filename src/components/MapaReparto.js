@@ -76,12 +76,24 @@ export default function MapaReparto({ pedidos, usuarioId, onUbicacionGuardada, o
     if (modoReparto && !isAdmin) return;
     const subscription = supabase
       .channel('public:profiles_gps')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, () => {
-         fetchTodosLosUsuarios();
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+         if (payload.new) {
+           setUsuariosData(prev => {
+             const index = prev.findIndex(u => u.id === payload.new.id);
+             if (index !== -1) {
+               const updated = [...prev];
+               updated[index] = { ...updated[index], latitud: payload.new.latitud, longitud: payload.new.longitud, ultima_actualizacion: payload.new.ultima_actualizacion };
+               return updated;
+             } else if (payload.new.latitud && payload.new.longitud) {
+               return [...prev, { id: payload.new.id, role: payload.new.role, nombre_completo: payload.new.nombre_completo, latitud: payload.new.latitud, longitud: payload.new.longitud, ultima_actualizacion: payload.new.ultima_actualizacion }];
+             }
+             return prev;
+           });
+         }
       })
       .subscribe();
     return () => { supabase.removeChannel(subscription); };
-  }, [modoReparto, isAdmin, fetchTodosLosUsuarios]);
+  }, [modoReparto, isAdmin]);
 
   // Restaurar ruta previa desde localStorage
   useEffect(() => {

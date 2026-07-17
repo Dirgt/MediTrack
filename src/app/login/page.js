@@ -30,6 +30,7 @@ export default function Login() {
     } else {
       // Guardar marca de inicio de sesión para controlar la expiración (12h)
       sessionStorage.setItem('meditrack_session_start', Date.now().toString());
+      window.dispatchEvent(new Event('force_gps_update'));
       router.push('/');
     }
   };

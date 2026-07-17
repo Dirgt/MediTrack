@@ -40,6 +40,7 @@ export default function ProfileSheet({ onClose }) {
 
   const handleLogout = async () => {
     setLoggingOut(true);
+    window.dispatchEvent(new Event('force_gps_update'));
     sessionStorage.removeItem('meditrack_session_start');
     await supabase.auth.signOut();
     onClose();

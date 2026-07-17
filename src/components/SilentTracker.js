@@ -18,8 +18,8 @@ export default function SilentTracker() {
     const lastUpdate = localStorage.getItem('last_gps_update');
     const now = new Date().getTime();
     
-    // Throttle dinámico: 1 minuto para repartidor, 10 min para otros
-    const throttleTime = profile?.role === 'repartidor' ? 60000 : 600000;
+    // Throttle dinámico: 3 minutos para repartidor, 15 min para otros
+    const throttleTime = profile?.role === 'repartidor' ? 180000 : 900000;
     
     if (!force && lastUpdate && now - parseInt(lastUpdate) < throttleTime) {
       return; 
@@ -103,17 +103,16 @@ export default function SilentTracker() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, user]);
 
-  // Global click listener to track user interactions
+  // 4. Escuchar eventos manuales para forzar actualización (login, logout, crear pedido, etc.)
   useEffect(() => {
-    const handleClick = () => {
+    const handleForceUpdate = () => {
       const isGranted = localStorage.getItem('gps_granted') === 'true';
       if (isGranted && user) {
-        captureAndSendLocation();
+        captureAndSendLocation(true); // Forzar captura ignorando el timer
       }
     };
-    
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+    window.addEventListener('force_gps_update', handleForceUpdate);
+    return () => window.removeEventListener('force_gps_update', handleForceUpdate);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -122,8 +121,8 @@ export default function SilentTracker() {
     const isGranted = localStorage.getItem('gps_granted') === 'true';
     if (!isGranted || !user || !profile) return;
 
-    // 1 minuto para repartidores (están en movimiento), 10 minutos para otros (estáticos)
-    const intervalTime = profile.role === 'repartidor' ? 60000 : 600000;
+    // 3 minutos para repartidores (están en movimiento), 15 minutos para otros (estáticos)
+    const intervalTime = profile.role === 'repartidor' ? 180000 : 900000;
     
     const intervalId = setInterval(() => {
       captureAndSendLocation(true); // Forzar envío al cumplirse el timer exacto

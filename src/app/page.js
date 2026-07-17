@@ -203,6 +203,7 @@ export default function CrearPedido() {
     }
 
     lastSubmitRef.current = Date.now(); // #3: marcar timestamp de envío exitoso
+    window.dispatchEvent(new Event('force_gps_update'));
     setSuccess(true);
     setClienteId('');
     setClienteSearch('');
