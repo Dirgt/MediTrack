@@ -17,8 +17,42 @@ export default function Navigation() {
   const [notificaciones, setNotificaciones] = useState([]);
   const [loadingNotifs, setLoadingNotifs] = useState(false);
   const drawerRef = useRef(null);
+  const pressTimer = useRef(null);
+  const isLongPressFiring = useRef(false);
 
   const esRepartidor = profile?.role === 'repartidor';
+  const isAdmin = profile?.role === 'admin';
+
+  // ── Gesto Oculto (Long Press) ──
+  const startPress = useCallback((path) => {
+    if (path === '/pedidos' && isAdmin) {
+      pressTimer.current = setTimeout(() => {
+        if (typeof window !== 'undefined' && window.navigator?.vibrate) {
+          window.navigator.vibrate(50);
+        }
+        isLongPressFiring.current = true;
+        router.push('/admin/alistamiento');
+        
+        // Desbloquear el botón después de 1 segundo
+        setTimeout(() => {
+          isLongPressFiring.current = false;
+        }, 1000);
+      }, 700); // 700ms para activar
+    }
+  }, [isAdmin, router]);
+
+  const endPress = useCallback(() => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current);
+      pressTimer.current = null;
+    }
+  }, []);
+
+  const handleLinkClick = useCallback((e) => {
+    if (isLongPressFiring.current) {
+      e.preventDefault();
+    }
+  }, []);
 
   // Fetch unread count for badge
   useEffect(() => {
@@ -122,7 +156,6 @@ export default function Navigation() {
   if (pathname === '/login') return null;
 
   const isRepartidor = profile?.role === 'repartidor';
-  const isAdmin = profile?.role === 'admin';
 
   return (
     <>
@@ -377,6 +410,12 @@ export default function Navigation() {
         {!isRepartidor && (
           <Link
             href="/pedidos"
+            onClick={handleLinkClick}
+            onTouchStart={() => startPress('/pedidos')}
+            onTouchEnd={endPress}
+            onMouseDown={() => startPress('/pedidos')}
+            onMouseUp={endPress}
+            onMouseLeave={endPress}
             style={{
               textDecoration: 'none',
               display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
@@ -384,6 +423,8 @@ export default function Navigation() {
               background: pathname === '/pedidos' ? 'rgba(15,110,86,0.08)' : 'transparent',
               transition: 'background 0.15s',
               WebkitTapHighlightColor: 'transparent',
+              userSelect: 'none', // Prevenir selección de texto en long press
+              WebkitUserSelect: 'none'
             }}
           >
             <span style={{

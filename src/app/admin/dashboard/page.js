@@ -303,6 +303,23 @@ export default function DashboardAdmin() {
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontWeight: 600 }}>Cargando métricas...</div>
         ) : (
           <>
+            {/* ── WIDGET DE ALISTAMIENTO (NUEVO) ── */}
+            <div 
+              onClick={() => router.push('/admin/alistamiento')}
+              style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #0F6E56 0%, #084032 100%)', borderRadius: 20, padding: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 10px 30px rgba(15,110,86,0.3)', transform: 'scale(1)', transition: 'transform 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ background: 'rgba(255,255,255,0.2)', width: 48, height: 48, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📦</div>
+                <div>
+                  <h3 style={{ margin: 0, color: 'white', fontSize: 16, fontWeight: 800 }}>Consola de Bodega (Batch Picking)</h3>
+                  <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.8)', fontSize: 13 }}>Tienes <strong>{stats.porEstado['pendiente'] || 0} pedidos pendientes</strong> por consolidar y empacar.</p>
+                </div>
+              </div>
+              <div style={{ color: 'white', fontSize: 24, fontWeight: 900 }}>→</div>
+            </div>
+
             {/* ── 1. MONITOR OPERATIVO EN VIVO ── */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingLeft: 4 }}>

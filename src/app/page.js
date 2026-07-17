@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useDeferredValue } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
+import ProductSearch from '@/components/ProductSearch';
 
 export default function CrearPedido() {
   const { user, profile } = useUser();
@@ -25,6 +26,9 @@ export default function CrearPedido() {
   const [showNewCliente, setShowNewCliente] = useState(false);
   const [nuevoCliente, setNuevoCliente] = useState({ nombre: '', telefono: '', localidad: '' });
   const deferredSearch = useDeferredValue(clienteSearch);
+
+  // ── Productos (Inventario) ──
+  const [listaPrecios, setListaPrecios] = useState([]);
 
   // ── Pedido ──
   const [fechaEntrega, setFechaEntrega] = useState('');
@@ -68,6 +72,28 @@ export default function CrearPedido() {
     }
     fetchClientes();
   }, [user, profile]);
+
+  /* ── Cargar inventario en RAM y suscribirse a cambios Realtime ── */
+  useEffect(() => {
+    async function fetchPrecios() {
+      const { data } = await supabase.from('lista_precios').select('id, producto, marca, agotado').order('producto');
+      if (data) setListaPrecios(data);
+    }
+    fetchPrecios();
+
+    const channel = supabase.channel('lista_precios_rt')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lista_precios' }, (payload) => {
+        if (payload.eventType === 'UPDATE') {
+          setListaPrecios(prev => prev.map(p => p.id === payload.new.id ? { ...p, ...payload.new } : p));
+        } else if (payload.eventType === 'INSERT') {
+          setListaPrecios(prev => [...prev, payload.new].sort((a, b) => a.producto.localeCompare(b.producto)));
+        } else if (payload.eventType === 'DELETE') {
+          setListaPrecios(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
 
   /* ── Cerrar dropdown al click fuera ── */
   useEffect(() => {
@@ -599,7 +625,7 @@ export default function CrearPedido() {
           </div>
 
           {/* ─ CARD: Medicamentos ─ */}
-          <div style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 22, boxShadow: '0 8px 32px rgba(15,110,86,0.08)' }}>
+          <div style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 22, boxShadow: '0 8px 32px rgba(15,110,86,0.08)', position: 'relative', zIndex: 20 }}>
             {/* Header */}
             <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -635,14 +661,14 @@ export default function CrearPedido() {
                     <div style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg, var(--brand), #1a9b78)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: 'white' }}>
                       {idx + 1}
                     </div>
-                    <input
-                      type="text"
-                      value={item.medicamento_nombre}
-                      onChange={e => changeItem(idx, 'medicamento_nombre', e.target.value)}
-                      required
-                      placeholder="Nombre del medicamento..."
-                      style={{ flex: 1, minWidth: 0, border: 'none', borderBottom: '1.5px solid rgba(0,0,0,0.08)', outline: 'none', fontSize: 14, padding: '4px 0 6px', background: 'transparent', fontFamily: 'inherit', color: 'var(--brand-dark)', fontWeight: item.medicamento_nombre ? 600 : 400 }}
-                    />
+                    <div style={{ flex: 1, minWidth: 200 }}>
+                      <ProductSearch
+                        products={listaPrecios}
+                        value={item.medicamento_nombre}
+                        onChange={(val) => changeItem(idx, 'medicamento_nombre', val)}
+                        placeholder="Buscar producto..."
+                      />
+                    </div>
                   </div>
                   {/* Fila 2 (wraps on mobile): Stepper + Eliminar */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
