@@ -48,7 +48,7 @@ export default function SilentTracker() {
           localStorage.setItem('last_gps_update', now.toString());
         },
         (error) => {
-          console.error("Error obteniendo GPS silencioso:", error);
+          console.warn(`GPS Silencioso falló [Code ${error.code}]: ${error.message}`);
           if (error.code === 1) { // 1 = PERMISSION_DENIED
              setPermisoDenegado(true);
              setNeedsPrompt(true);

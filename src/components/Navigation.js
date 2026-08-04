@@ -374,6 +374,71 @@ export default function Navigation() {
           </Link>
         )}
 
+        {/* 2.1 Reportes (Solo Admin) */}
+        {isAdmin && (
+          <Link
+            href="/admin/reportes"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/admin/reportes' ? 'rgba(59,130,246,0.1)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/admin/reportes' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              📈
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/admin/reportes' ? 700 : 500,
+              color: pathname === '/admin/reportes' ? '#3b82f6' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Reportes
+            </span>
+          </Link>
+        )}
+
+
+        {/* 2.2 Caja (Solo Admin) */}
+        {isAdmin && (
+          <Link
+            href="/admin/cartera"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/admin/cartera' ? 'rgba(124,58,237,0.1)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/admin/cartera' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              💵
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/admin/cartera' ? 700 : 500,
+              color: pathname === '/admin/cartera' ? '#7c3aed' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Caja
+            </span>
+          </Link>
+        )}
+
         {/* 3. Crear — Solo admin y vendedor */}
         {!isRepartidor && (
           <Link

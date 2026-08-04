@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/context/UserContext';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const ESTADO_CFG = {
   pendiente:            { label:'Pendiente',          emoji:'⏳', color:'#0F6E56' },
@@ -21,6 +22,9 @@ export default function DashboardAdmin() {
   const router = useRouter();
   const { profile, loading: userLoading } = useUser();
   const [loading, setLoading] = useState(true);
+  
+  // ERP State
+  const [erpStats, setErpStats] = useState({ ingresos: 0, egresos: 0, balance: 0, trend: [] });
   
   // Dynamic State
   const [allPedidos, setAllPedidos] = useState([]);
@@ -75,10 +79,49 @@ export default function DashboardAdmin() {
     }
   }, []);
 
+  const fetchErpStats = useCallback(async () => {
+    try {
+      const limitDate = new Date();
+      if (timeFilter === 'today') limitDate.setHours(0,0,0,0);
+      else if (timeFilter === '7d') limitDate.setDate(limitDate.getDate() - 7);
+      else if (timeFilter === '30d') limitDate.setDate(limitDate.getDate() - 30);
+      else if (timeFilter === 'all') limitDate.setFullYear(2020);
+      
+      const limitISO = limitDate.toISOString();
+      const { data: txs } = await supabase.from('transactions').select('tipo, monto, creado_en').gte('creado_en', limitISO);
+      
+      if (txs) {
+        let ing = 0; let egr = 0;
+        const trendMap = {};
+        
+        txs.forEach(t => {
+          const val = Number(t.monto);
+          if (t.tipo === 'ingreso') ing += val;
+          if (t.tipo === 'egreso') egr += val;
+          
+          const d = new Date(t.creado_en);
+          const day = d.toLocaleDateString('es-CO', { month: 'short', day: 'numeric' });
+          const timestamp = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+          
+          if(!trendMap[day]) trendMap[day] = { name: day, ingresos: 0, egresos: 0, timestamp };
+          if (t.tipo === 'ingreso') trendMap[day].ingresos += val;
+          if (t.tipo === 'egreso') trendMap[day].egresos += val;
+        });
+        
+        const trend = Object.values(trendMap).sort((a,b) => a.timestamp - b.timestamp);
+        
+        setErpStats({ ingresos: ing, egresos: egr, balance: ing - egr, trend });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [timeFilter]);
+
   useEffect(() => {
     if (profile?.role === 'admin') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchStats();
+      fetchErpStats();
       const channel = supabase.channel('dashboard_rt')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, async (payload) => {
           if (payload.eventType === 'UPDATE') {
@@ -103,7 +146,7 @@ export default function DashboardAdmin() {
         .subscribe();
       return () => supabase.removeChannel(channel);
     }
-  }, [profile, fetchStats]);
+  }, [profile, fetchStats, fetchErpStats]);
 
   useEffect(() => {
     if (!allPedidos) return;
@@ -179,13 +222,13 @@ export default function DashboardAdmin() {
       tendencia.push({ dia: d.toLocaleDateString('es-CO', { weekday:'short' }).replace('.',''), count });
     }
 
-    // Clientes inactivos (sin pedidos en los últimos 20 días)
-    const limit20d = new Date();
-    limit20d.setDate(limit20d.getDate() - 20);
-    const limit20dISO = limit20d.toISOString();
-    const pedidosUltimos20d = allPedidos.filter(p => p.creado_en >= limit20dISO);
+    // Clientes inactivos (sin pedidos en los últimos 30 días)
+    const limit30d = new Date();
+    limit30d.setDate(limit30d.getDate() - 30);
+    const limit30dISO = limit30d.toISOString();
+    const pedidosUltimos30d = allPedidos.filter(p => p.creado_en >= limit30dISO);
     const clientesConPedido = new Set(
-      pedidosUltimos20d.map(p => p.cliente_nombre?.trim()?.toLowerCase()).filter(Boolean)
+      pedidosUltimos30d.map(p => p.cliente_nombre?.trim()?.toLowerCase()).filter(Boolean)
     );
     const clientesInactivos = allClientes
       .filter(c => !clientesConPedido.has(c.nombre?.trim()?.toLowerCase()))
@@ -303,6 +346,63 @@ export default function DashboardAdmin() {
           <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8', fontWeight: 600 }}>Cargando métricas...</div>
         ) : (
           <>
+            {/* ── WIDGET FINANCIERO ERP (ENTERPRISE GRAPH) ── */}
+            <div style={{ background: 'white', borderRadius: 28, padding: 24, boxShadow: '0 10px 30px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 13, fontWeight: 900, color: '#0F6E56', textTransform: 'uppercase', letterSpacing: 1 }}>Rendimiento Financiero</h3>
+                  <p style={{ margin: '4px 0 0', fontSize: 38, fontWeight: 900, letterSpacing: '-1px', color: '#0f172a' }}>
+                    ${erpStats.balance.toLocaleString('es-CO')}
+                  </p>
+                  <p style={{ margin: 0, fontSize: 13, color: '#64748b', fontWeight: 600 }}>Balance del periodo seleccionado</p>
+                </div>
+              </div>
+
+              {/* Chart */}
+              {erpStats.trend.length > 0 ? (
+                <div style={{ width: '100%', height: 220, marginTop: 10 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={erpStats.trend} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorIngresos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorEgresos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} dy={10} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 600 }} tickFormatter={val => `$${(val/1000)}k`} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: 16, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontWeight: 700 }}
+                        itemStyle={{ fontWeight: 800 }}
+                        formatter={(value) => [`$${value.toLocaleString('es-CO')}`, '']}
+                      />
+                      <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIngresos)" />
+                      <Area type="monotone" dataKey="egresos" name="Egresos" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorEgresos)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: 20, border: '2px dashed #e2e8f0' }}>
+                  <p style={{ color: '#94a3b8', fontSize: 14, fontWeight: 600 }}>No hay movimientos financieros en este periodo</p>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, borderTop: '1px solid #f1f5f9', paddingTop: 20 }}>
+                <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: 20, border: '1px solid #d1fae5' }}>
+                  <div style={{ fontSize: 11, color: '#059669', fontWeight: 900, textTransform: 'uppercase' }}>Total Ingresos</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#047857' }}>+${erpStats.ingresos.toLocaleString('es-CO')}</div>
+                </div>
+                <div style={{ background: '#fef2f2', padding: '16px', borderRadius: 20, border: '1px solid #fee2e2' }}>
+                  <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 900, textTransform: 'uppercase' }}>Total Egresos</div>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: '#b91c1c' }}>-${erpStats.egresos.toLocaleString('es-CO')}</div>
+                </div>
+              </div>
+            </div>
             {/* ── WIDGET DE ALISTAMIENTO (NUEVO) ── */}
             <div 
               onClick={() => router.push('/admin/alistamiento')}
@@ -551,7 +651,7 @@ export default function DashboardAdmin() {
               </div>
             </div>
 
-            {/* ── 5b. CLIENTES POR REACTIVAR (20 DÍAS) ── */}
+            {/* ── 5b. CLIENTES POR REACTIVAR (30 DÍAS) ── */}
             <div style={{ background: 'white', borderRadius: 28, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.03)', border: '1px solid #f1f5f9' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <h3 style={{ fontSize: 13, fontWeight: 900, color: '#f59e0b', margin: 0, textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -562,7 +662,7 @@ export default function DashboardAdmin() {
                 </span>
               </div>
               <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 16px', fontWeight: 500 }}>
-                Clientes activos sin pedidos en los últimos 20 días
+                Clientes activos sin pedidos en los últimos 30 días
               </p>
 
               {stats.clientesInactivos.length > 0 ? (
@@ -595,7 +695,7 @@ export default function DashboardAdmin() {
                 <div style={{ textAlign: 'center', padding: '24px 0' }}>
                   <span style={{ fontSize: 32, display: 'block', marginBottom: 8 }}>🎉</span>
                   <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#10b981' }}>¡Todos los clientes están activos!</p>
-                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>Todos realizaron pedidos en los últimos 20 días</p>
+                  <p style={{ margin: '4px 0 0', fontSize: 12, color: '#94a3b8' }}>Todos realizaron pedidos en los últimos 30 días</p>
                 </div>
               )}
             </div>
@@ -639,6 +739,7 @@ export default function DashboardAdmin() {
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 70% { box-shadow: 0 0 0 6px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );

@@ -75,7 +75,7 @@ export default function DetallePedido({ params }) {
           id, cliente_nombre, estado, creado_en, actualizado_en,
           observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
           intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id,
-          order_items(id, medicamento_nombre, cantidad),
+          order_items(id, medicamento_nombre, cantidad, precio_costo, precio_venta_historico),
           profiles!orders_vendedor_id_fkey(id, nombre_completo)
         `)
         .eq('id', orderId)
@@ -136,6 +136,21 @@ export default function DetallePedido({ params }) {
   const totalUds = items.reduce((a, i) => a + (parseInt(i.cantidad) || 0), 0);
   const isAdmin = profile?.role === 'admin';
   const puedeEditar = !isAdmin && pedido.estado === 'pendiente';
+
+  // Calculate profitability (only meaningful if there are prices, e.g. delivered or frozen)
+  let totalVenta = 0;
+  let totalCosto = 0;
+  items.forEach(it => {
+    const qty = parseInt(it.cantidad) || 0;
+    const venta = parseFloat(it.precio_venta_historico) || 0;
+    const costo = parseFloat(it.precio_costo) || 0;
+    totalVenta += qty * venta;
+    totalCosto += qty * costo;
+  });
+  const gananciaNeta = totalVenta - totalCosto;
+  const margen = totalVenta > 0 ? ((gananciaNeta / totalVenta) * 100).toFixed(1) : 0;
+
+  const formatearDinero = (val) => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 }).format(val);
 
   return (
     <div style={{ paddingBottom:100, background:'linear-gradient(135deg, #084032 0%, #0F6E56 50%)', minHeight:'100vh' }}>
@@ -239,6 +254,32 @@ export default function DetallePedido({ params }) {
             ))}
           </div>
         </div>
+
+        {/* Rentabilidad / Ganancia (Solo Admins y si hay precios históricos) */}
+        {isAdmin && totalVenta > 0 && (
+          <div style={{ background:'linear-gradient(135deg, #084032 0%, #0f172a 100%)', borderRadius:24, padding:'24px', boxShadow:'0 10px 30px rgba(0,0,0,0.15)', border:'1px solid rgba(255,255,255,0.1)' }}>
+            <p style={{ margin:'0 0 16px', fontSize:12, fontWeight:900, color:'#94a3b8', textTransform:'uppercase', letterSpacing:1 }}>💰 Rentabilidad del Pedido</p>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+              <div>
+                <p style={{ margin:'0 0 4px', fontSize:11, color:'#94a3b8', textTransform:'uppercase' }}>Venta Total</p>
+                <p style={{ margin:0, fontSize:18, fontWeight:900, color:'white' }}>{formatearDinero(totalVenta)}</p>
+              </div>
+              <div>
+                <p style={{ margin:'0 0 4px', fontSize:11, color:'#94a3b8', textTransform:'uppercase' }}>Costo Total</p>
+                <p style={{ margin:0, fontSize:18, fontWeight:900, color:'#fca5a5' }}>{formatearDinero(totalCosto)}</p>
+              </div>
+            </div>
+            <div style={{ marginTop:16, paddingTop:16, borderTop:'1px solid rgba(255,255,255,0.1)', display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
+              <div>
+                <p style={{ margin:'0 0 4px', fontSize:11, color:'#94a3b8', textTransform:'uppercase' }}>Ganancia Neta</p>
+                <p style={{ margin:0, fontSize:28, fontWeight:900, color:'#10b981', letterSpacing:'-0.5px' }}>+{formatearDinero(gananciaNeta)}</p>
+              </div>
+              <div style={{ background:'rgba(16,185,129,0.2)', padding:'6px 12px', borderRadius:12 }}>
+                <p style={{ margin:0, fontSize:14, fontWeight:900, color:'#34d399' }}>{margen}% Margen</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Observaciones / alertas */}
         {(pedido.observaciones || pedido.motivo_rechazo || pedido.nota_reintento) && (

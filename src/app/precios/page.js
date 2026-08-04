@@ -124,6 +124,23 @@ export default function ListaPrecios() {
     });
   };
 
+  const inventarioStats = useMemo(() => {
+    let capital = 0;
+    let potencial = 0;
+    let items = 0;
+
+    productos.forEach(p => {
+      const s = parseInt(p.stock) || 0;
+      if (s > 0) {
+        capital += s * (parseFloat(p.precio_costo) || 0);
+        potencial += s * (parseFloat(p.precio_normal) || 0);
+        items += s;
+      }
+    });
+
+    return { capital, potencial, items, ganancia: potencial - capital };
+  }, [productos]);
+
   if (isRepartidor) return null;
 
   return (
@@ -170,8 +187,51 @@ export default function ListaPrecios() {
         </div>
       </div>
 
+      {/* ══ VALORACIÓN DE INVENTARIO (Solo Admin) ══ */}
+      {isAdmin && (
+        <div style={{ padding: '0 20px', marginTop: -24, position: 'relative', zIndex: 11 }}>
+          <div style={{ 
+            background: 'white', 
+            borderRadius: 20, 
+            padding: '20px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+            border: '1px solid #e2e8f0',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: 16
+          }}>
+            {/* Capital Invertido */}
+            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 16, borderLeft: '4px solid #64748b' }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Capital en Bodega</p>
+              <p style={{ margin: '4px 0 0', fontSize: 18, color: '#0f172a', fontWeight: 900 }}>
+                {formatearPrecio(inventarioStats.capital)}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>{inventarioStats.items} unidades físicas</p>
+            </div>
+
+            {/* Potencial de Venta */}
+            <div style={{ background: '#f8fafc', padding: '16px', borderRadius: 16, borderLeft: '4px solid #3b82f6' }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Venta Potencial</p>
+              <p style={{ margin: '4px 0 0', fontSize: 18, color: '#1d4ed8', fontWeight: 900 }}>
+                {formatearPrecio(inventarioStats.potencial)}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>Vendiendo a precio normal</p>
+            </div>
+
+            {/* Ganancia Latente */}
+            <div style={{ background: '#f0fdf4', padding: '16px', borderRadius: 16, borderLeft: '4px solid #10b981' }}>
+              <p style={{ margin: 0, fontSize: 11, color: '#047857', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ganancia Latente</p>
+              <p style={{ margin: '4px 0 0', fontSize: 18, color: '#047857', fontWeight: 900 }}>
+                {formatearPrecio(inventarioStats.ganancia)}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: '#059669' }}>Utilidad bruta esperada</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══ BUSCADOR ══ */}
-      <div style={{ padding: '0 20px', marginTop: -24, position: 'relative', zIndex: 10 }}>
+      <div style={{ padding: '0 20px', marginTop: isAdmin ? 16 : -24, position: 'relative', zIndex: 10 }}>
         <div style={{ 
           background: 'white', borderRadius: 20, display: 'flex', alignItems: 'center', padding: '12px 18px',
           boxShadow: '0 8px 25px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9'
@@ -209,6 +269,8 @@ export default function ListaPrecios() {
               <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
                 <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Producto</th>
                 <th style={{ padding: '12px 10px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Marca</th>
+                {isAdmin && <th style={{ padding: '12px 10px', textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Stock</th>}
+                {isAdmin && <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Costo</th>}
                 <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Crédito</th>
                 <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Contado</th>
                 {isAdmin && <th style={{ padding: '12px 10px', textAlign: 'right', fontSize: 11, fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Acciones</th>}
@@ -222,6 +284,7 @@ export default function ListaPrecios() {
                   <tr key={prod.id} style={{ 
                     borderBottom: '1px solid #f1f5f9',
                     opacity: prod.agotado ? 0.6 : 1, transition: 'all 0.2s',
+                    background: (isAdmin && prod.stock <= 5) ? 'rgba(239,68,68,0.03)' : 'transparent',
                   }}>
                     <td style={{ padding: '16px 10px', verticalAlign: 'middle' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -232,6 +295,16 @@ export default function ListaPrecios() {
                     <td style={{ padding: '16px 10px', textAlign: 'left', verticalAlign: 'middle' }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: '#64748b' }}>{prod.marca || '--'}</span>
                     </td>
+                    {isAdmin && (
+                      <td style={{ padding: '16px 10px', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: prod.stock <= 5 ? '#ef4444' : '#10b981', background: prod.stock <= 5 ? '#fef2f2' : '#f0fdf4', padding: '4px 8px', borderRadius: 8 }}>{prod.stock || 0}</span>
+                      </td>
+                    )}
+                    {isAdmin && (
+                      <td style={{ padding: '16px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>{formatearPrecio(prod.precio_costo)}</span>
+                      </td>
+                    )}
                     <td style={{ padding: '16px 10px', textAlign: 'right', verticalAlign: 'middle' }}>
                       <span style={{ fontSize: 15, fontWeight: 700, color: '#64748b' }}>{formatearPrecio(prod.precio_normal)}</span>
                     </td>
@@ -298,6 +371,8 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
   const [marca, setMarca] = useState(productoBase?.marca || '');
   const [precioNormal, setPrecioNormal] = useState(productoBase?.precio_normal || '');
   const [precioDescuento, setPrecioDescuento] = useState(productoBase?.precio_descuento || '');
+  const [stock, setStock] = useState(productoBase?.stock || 0);
+  const [precioCosto, setPrecioCosto] = useState(productoBase?.precio_costo || 0);
   const [agotado, setAgotado] = useState(productoBase?.agotado || false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -329,12 +404,23 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
       marca: marca.trim() || null,
       precio_normal: parseFloat(precioNormal),
       precio_descuento: parseFloat(precioDescuento),
+      stock: parseInt(stock) || 0,
+      precio_costo: parseFloat(precioCosto) || 0,
       agotado
     };
 
     let res;
     if (isEdit) {
       res = await supabase.from('lista_precios').update(payload).eq('id', productoBase.id);
+      
+      const diff = (parseInt(stock) || 0) - (productoBase?.stock || 0);
+      if (diff !== 0 && !res.error) {
+        await supabase.from('inventory_movements').insert({
+          producto_id: productoBase.id,
+          cantidad: diff,
+          tipo: 'ajuste'
+        });
+      }
     } else {
       res = await supabase.from('lista_precios').insert(payload);
     }
@@ -377,6 +463,20 @@ function ModalPrecio({ productoBase, onClose, onSuccess }) {
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--brand)', fontWeight: 800 }}>$</span>
                 <input type="number" value={precioNormal} readOnly style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 30px', borderRadius: 14, border: '2px solid rgba(15,110,86,0.15)', background: 'rgba(15,110,86,0.03)', fontSize: 15, fontWeight: 700, outline: 'none', color: 'var(--brand-dark)', cursor: 'not-allowed' }} title="Calculado automáticamente" />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: '#3b82f6', marginBottom: 6, textTransform: 'uppercase' }}>Stock (Inventario)</label>
+              <input type="number" value={stock} onChange={e => setStock(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px', borderRadius: 14, border: '2px solid rgba(59,130,246,0.15)', background: 'rgba(59,130,246,0.03)', fontSize: 15, fontWeight: 700, outline: 'none', color: '#1e293b' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Costo Compra</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontWeight: 800 }}>$</span>
+                <input type="number" value={precioCosto} onChange={e => setPrecioCosto(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '14px 16px 14px 30px', borderRadius: 14, border: '2px solid #e2e8f0', background: '#f8fafc', fontSize: 15, fontWeight: 700, outline: 'none', color: '#475569' }} />
               </div>
             </div>
           </div>
