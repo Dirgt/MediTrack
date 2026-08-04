@@ -104,6 +104,7 @@ export default function ListaPrecios() {
   };
 
   const formatearPrecio = (precio) => {
+    if (!precio || isNaN(precio)) return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(0);
     return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(precio);
   };
 
@@ -429,12 +430,18 @@ export default function ListaPrecios() {
       {isAdmin && activeTab === 'compras' && (
         <div style={{ padding: '20px' }}>
           <div style={{ background: 'white', borderRadius: 24, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
-            <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.5px' }}>Registrar Compra a Proveedor</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.5px' }}>Registrar Compra a Proveedor</h3>
+              <button onClick={() => handleOpenModal()} style={{ background: '#e0e7ff', color: '#4f46e5', border: 'none', borderRadius: 12, padding: '8px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                ✨ Crear Producto Nuevo
+              </button>
+            </div>
+            
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Producto (Inventario Actual)</label>
                 <select value={compraProd} onChange={e => setCompraProd(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: 14, fontWeight: 700, outline: 'none', background: '#f8fafc', color: '#334155' }}>
-                  <option value="">-- Seleccionar --</option>
+                  <option value="">-- Seleccionar o Buscar --</option>
                   {productos.map(p => (
                     <option key={p.id} value={p.id}>{p.producto} (Stock: {p.stock || 0})</option>
                   ))}
@@ -450,11 +457,50 @@ export default function ListaPrecios() {
               </div>
             </div>
             
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: 16, borderRadius: 16, marginBottom: 20 }}>
-              <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
-                <strong>Automático:</strong> Esto sumará el stock, recalculará el costo unitario, registrará el movimiento en el Kardex y generará el Egreso en Caja automáticamente.
-              </p>
-            </div>
+            {compraProd && (() => {
+              const p = productos.find(x => x.id === compraProd);
+              if (!p) return null;
+              
+              const cant = parseInt(compraCant) || 0;
+              const costoTotal = parseFloat(compraCosto) || 0;
+              const nuevoCostoU = cant > 0 ? (costoTotal / cant) : 0;
+              const alertaMargen = nuevoCostoU > p.precio_descuento; // 10% lógica o descuento actual
+              
+              return (
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: 16, borderRadius: 16, marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 600 }}>Costo Unitario Calculado:</p>
+                      <p style={{ margin: '4px 0 0', fontSize: 18, color: '#0f172a', fontWeight: 900 }}>{nuevoCostoU > 0 ? formatearPrecio(nuevoCostoU) : '--'}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 600 }}>Precio de Venta (Contado):</p>
+                      <p style={{ margin: '4px 0 0', fontSize: 18, color: '#0F6E56', fontWeight: 900 }}>{formatearPrecio(p.precio_descuento)}</p>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 600 }}>Margen Actual:</p>
+                      <p style={{ margin: '4px 0 0', fontSize: 18, color: alertaMargen ? '#ef4444' : '#10b981', fontWeight: 900 }}>
+                        {nuevoCostoU > 0 ? `${(((p.precio_descuento - nuevoCostoU) / p.precio_descuento) * 100).toFixed(1)}%` : '--'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {alertaMargen && (
+                    <div style={{ marginTop: 12, padding: 12, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <p style={{ margin: 0, fontSize: 12, color: '#b91c1c', fontWeight: 600 }}>
+                        ⚠️ ¡Atención! El nuevo costo es mayor que tu precio de venta actual de contado. Perderás dinero.
+                      </p>
+                      <button onClick={() => handleOpenModal(p)} style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}>
+                        Ajustar Precios (10%)
+                      </button>
+                    </div>
+                  )}
+                  <p style={{ margin: '16px 0 0', fontSize: 12, color: '#64748b', fontWeight: 600, borderTop: '1px dashed #cbd5e1', paddingTop: 10 }}>
+                    <strong>Automático:</strong> Esto sumará el stock, registrará en el Kardex y generará el Egreso en Caja automáticamente.
+                  </p>
+                </div>
+              );
+            })()}
 
             <button 
               onClick={handleRegistrarCompra}
