@@ -15,6 +15,8 @@ export default function CarteraYLiquidacion() {
   const [entregasPendientes, setEntregasPendientes] = useState([]);
   const [creditosPendientes, setCreditosPendientes] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
+  const [cierres, setCierres] = useState([]);
+  const [savingCierre, setSavingCierre] = useState(false);
   
   // States for new egreso
   const [egresoCat, setEgresoCat] = useState('proveedores');
@@ -43,18 +45,21 @@ export default function CarteraYLiquidacion() {
     if (entregas) setEntregasPendientes(entregas);
 
     // 2. Pedidos a Crédito sin liquidar (Cartera en la calle)
+    // Seleccionamos * para incluir monto_abonado (si existe) y evitamos crash si no se ha migrado
     const { data: creditos } = await supabase
       .from('orders')
-      .select('id, numero_pedido, cliente_nombre, fecha_entrega, repartidor_id, per_vendedor:profiles!orders_vendedor_id_fkey(nombre_completo), items:order_items(cantidad, precio_venta_historico)')
+      .select('*, per_vendedor:profiles!orders_vendedor_id_fkey(nombre_completo), items:order_items(cantidad, precio_venta_historico)')
       .eq('estado', 'entregado')
       .eq('tipo_pago', 'credito')
+      .eq('pagado', false)
       .eq('liquidado_admin', false)
       .order('fecha_entrega', { ascending: true });
 
     // Sumar totales para los créditos
     const creditosConTotal = (creditos || []).map(c => {
-      const total = c.items.reduce((acc, it) => acc + (it.cantidad * (it.precio_venta_historico || 0)), 0);
-      return { ...c, total_deuda: total };
+      const total = c.items ? c.items.reduce((acc, it) => acc + (it.cantidad * (it.precio_venta_historico || 0)), 0) : 0;
+      const abonado = c.monto_abonado || 0;
+      return { ...c, total_deuda: total, abonado, saldo_pendiente: total - abonado };
     });
 
     setCreditosPendientes(creditosConTotal);
@@ -67,6 +72,19 @@ export default function CarteraYLiquidacion() {
       .limit(50);
       
     if (txs) setMovimientos(txs);
+
+    // 4. Cierres Z
+    // Envolvemos en try-catch por si el usuario no ha corrido la migración SQL aún
+    try {
+      const { data: cData } = await supabase
+        .from('caja_cierres')
+        .select('*')
+        .order('fecha_cierre', { ascending: false })
+        .limit(20);
+      if (cData) setCierres(cData);
+    } catch (e) {
+      console.log('Tabla caja_cierres no existe aún.');
+    }
 
     setLoading(false);
   }, []);
@@ -99,17 +117,44 @@ export default function CarteraYLiquidacion() {
   };
 
   const handleLiquidarCredito = async (pedido) => {
-    if (!confirm(`¿Confirmas que el cliente pagó su crédito de ${formatearDinero(pedido.total_deuda)}?`)) return;
+    const abonoStr = prompt(`El cliente DEBE: ${formatearDinero(pedido.saldo_pendiente)}\n\n¿Cuánto está abonando en este momento? (Ingresa el valor numérico sin puntos):`, pedido.saldo_pendiente);
     
-    // 1. Marcar pedido
-    await supabase.from('orders').update({ liquidado_admin: true }).eq('id', pedido.id);
+    if (!abonoStr) return; // Canceló
+    const abono = parseFloat(abonoStr);
+    
+    if (isNaN(abono) || abono <= 0) {
+      alert("Valor inválido");
+      return;
+    }
+
+    if (abono > pedido.saldo_pendiente) {
+      alert(`No puedes abonar más de la deuda restante (${formatearDinero(pedido.saldo_pendiente)})`);
+      return;
+    }
+
+    const nuevoAbonado = pedido.abonado + abono;
+    const pagadoCompletamente = (nuevoAbonado >= pedido.total_deuda);
+    
+    if (!confirm(`Vas a registrar un abono por ${formatearDinero(abono)}. ${pagadoCompletamente ? '¡Esto cancelará la deuda por completo!' : `Quedará un saldo de ${formatearDinero(pedido.total_deuda - nuevoAbonado)}`}\n\n¿Confirmas?`)) return;
+
+    // 1. Marcar pedido (actualizar abono y si está totalmente pagado, liquidar)
+    const updatePayload = {};
+    if (pedido.hasOwnProperty('monto_abonado')) {
+      updatePayload.monto_abonado = nuevoAbonado;
+    }
+    if (pagadoCompletamente) {
+      updatePayload.liquidado_admin = true;
+      updatePayload.pagado = true;
+    }
+    
+    await supabase.from('orders').update(updatePayload).eq('id', pedido.id);
     
     // 2. Registrar en ERP
     await supabase.from('transactions').insert({
       tipo: 'ingreso',
-      monto: pedido.total_deuda,
-      metodo_pago: 'transferencia', // Por defecto, se puede mejorar
-      concepto: 'Pago de cartera/crédito',
+      monto: abono,
+      metodo_pago: 'efectivo', // Por defecto
+      concepto: pagadoCompletamente ? 'Pago Total de Cartera' : 'Abono Parcial a Cartera',
       referencia_id: pedido.id,
       creado_por: user.id
     });
@@ -139,6 +184,62 @@ export default function CarteraYLiquidacion() {
     fetchData();
   };
 
+  const handleCerrarCaja = async () => {
+    if (!confirm('¿Estás seguro de cerrar la caja ahora? Se sumarán todas las transacciones sin cerrar.')) return;
+    setSavingCierre(true);
+
+    try {
+      // Obtener transacciones sin cerrar
+      const { data: txsSinCerrar } = await supabase
+        .from('transactions')
+        .select('id, monto, tipo')
+        .is('cierre_id', null);
+
+      if (!txsSinCerrar || txsSinCerrar.length === 0) {
+        alert('No hay transacciones pendientes por cerrar.');
+        setSavingCierre(false);
+        return;
+      }
+
+      let tIngresos = 0;
+      let tEgresos = 0;
+      txsSinCerrar.forEach(tx => {
+        if (tx.tipo === 'ingreso') tIngresos += parseFloat(tx.monto);
+        else if (tx.tipo === 'egreso') tEgresos += parseFloat(tx.monto);
+      });
+
+      const saldo = tIngresos - tEgresos;
+
+      // Crear el cierre
+      const { data: nuevoCierre, error: errorCierre } = await supabase
+        .from('caja_cierres')
+        .insert({
+          total_ingresos: tIngresos,
+          total_egresos: tEgresos,
+          saldo_final: saldo,
+          creado_por: user.id
+        })
+        .select()
+        .single();
+
+      if (errorCierre) throw errorCierre;
+
+      // Vincular transacciones
+      const ids = txsSinCerrar.map(t => t.id);
+      await supabase
+        .from('transactions')
+        .update({ cierre_id: nuevoCierre.id })
+        .in('id', ids);
+
+      alert(`Caja cerrada con éxito. Saldo: ${formatearDinero(saldo)}`);
+      fetchData();
+    } catch (error) {
+      alert('Error cerrando caja: ' + error.message);
+    }
+
+    setSavingCierre(false);
+  };
+
   if (!isAdmin) return null;
 
   return (
@@ -161,14 +262,17 @@ export default function CarteraYLiquidacion() {
 
       <div style={{ padding: '0 20px', marginTop: -24, position: 'relative', zIndex: 10 }}>
         <div style={{ display: 'flex', background: 'white', borderRadius: 20, padding: 6, boxShadow: '0 10px 40px rgba(0,0,0,0.08)', overflowX: 'auto', border: '1px solid rgba(226,232,240,0.8)' }}>
-          <button onClick={() => setActiveTab('repartidores')} style={{ flex: 1, minWidth: 140, padding: '14px', border: 'none', borderRadius: 16, background: activeTab === 'repartidores' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'repartidores' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'repartidores' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
-            🛵 Dinero Repartidores
+          <button onClick={() => setActiveTab('repartidores')} style={{ flex: 1, minWidth: 130, padding: '14px 10px', border: 'none', borderRadius: 16, background: activeTab === 'repartidores' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'repartidores' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'repartidores' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
+            🛵 Repartidores
           </button>
-          <button onClick={() => setActiveTab('creditos')} style={{ flex: 1, minWidth: 140, padding: '14px', border: 'none', borderRadius: 16, background: activeTab === 'creditos' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'creditos' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'creditos' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
-            📓 Cartera Clientes
+          <button onClick={() => setActiveTab('creditos')} style={{ flex: 1, minWidth: 130, padding: '14px 10px', border: 'none', borderRadius: 16, background: activeTab === 'creditos' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'creditos' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'creditos' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
+            📓 Por Cobrar
           </button>
-          <button onClick={() => setActiveTab('movimientos')} style={{ flex: 1, minWidth: 140, padding: '14px', border: 'none', borderRadius: 16, background: activeTab === 'movimientos' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'movimientos' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'movimientos' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
-            📉 Historial / Egresos
+          <button onClick={() => setActiveTab('movimientos')} style={{ flex: 1, minWidth: 130, padding: '14px 10px', border: 'none', borderRadius: 16, background: activeTab === 'movimientos' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'movimientos' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'movimientos' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
+            📉 Movimientos
+          </button>
+          <button onClick={() => setActiveTab('cierres')} style={{ flex: 1, minWidth: 130, padding: '14px 10px', border: 'none', borderRadius: 16, background: activeTab === 'cierres' ? 'linear-gradient(135deg, #084032 0%, #052920 100%)' : 'transparent', color: activeTab === 'cierres' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'cierres' ? '0 4px 15px rgba(8,64,50,0.25)' : 'none' }}>
+            🔒 Cierres Z
           </button>
         </div>
       </div>
@@ -233,7 +337,7 @@ export default function CarteraYLiquidacion() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : activeTab === 'movimientos' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
             {/* Formulario rápido de Egreso */}
             <div style={{ background: 'white', borderRadius: 24, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
@@ -298,7 +402,50 @@ export default function CarteraYLiquidacion() {
               </div>
             </div>
           </div>
-        )}
+        ) : activeTab === 'cierres' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ background: 'white', borderRadius: 24, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9', textAlign: 'center' }}>
+              <div style={{ fontSize: 40, marginBottom: 16 }}>🔒</div>
+              <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 900, color: '#0f172a' }}>Cierre Z (Arqueo Diario)</h3>
+              <p style={{ color: '#64748b', fontSize: 14, marginBottom: 24, maxWidth: 400, margin: '0 auto 24px' }}>
+                Esto sumará todos los ingresos y egresos que no hayan sido cerrados y reiniciará la caja a cero.
+              </p>
+              <button 
+                onClick={handleCerrarCaja}
+                disabled={savingCierre}
+                style={{ background: 'linear-gradient(135deg, #084032 0%, #052920 100%)', border: 'none', borderRadius: 16, padding: '16px 32px', color: 'white', fontWeight: 800, fontSize: 15, cursor: savingCierre ? 'not-allowed' : 'pointer', boxShadow: '0 8px 20px rgba(8,64,50,0.25)', transition: 'all 0.3s ease' }}
+              >
+                {savingCierre ? 'Procesando Cierre...' : 'Ejecutar Cierre Z Ahora'}
+              </button>
+            </div>
+
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 900, color: '#64748b', margin: '0 0 16px 8px', textTransform: 'uppercase', letterSpacing: 1 }}>Historial de Cierres</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {cierres.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: 20 }}>No hay cierres registrados aún.</p>
+                ) : cierres.map(c => (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'white', borderRadius: 20, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #f8fafc' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Cierre Z</p>
+                      <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                        {new Date(c.fecha_cierre).toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: c.saldo_final >= 0 ? '#10b981' : '#ef4444' }}>
+                        {formatearDinero(c.saldo_final)}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>
+                        I: {formatearDinero(c.total_ingresos)} | E: {formatearDinero(c.total_egresos)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

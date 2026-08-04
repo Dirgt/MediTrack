@@ -16,7 +16,14 @@ export default function ListaPrecios() {
   
   const [showModal, setShowModal] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
+  const [activeTab, setActiveTab] = useState('catalogo');
+  const [kardex, setKardex] = useState([]);
   
+  const [compraProd, setCompraProd] = useState('');
+  const [compraCant, setCompraCant] = useState('');
+  const [compraCosto, setCompraCosto] = useState('');
+  const [savingCompra, setSavingCompra] = useState(false);
+
   const isAdmin = profile?.role === 'admin';
   const isRepartidor = profile?.role === 'repartidor';
 
@@ -39,6 +46,19 @@ export default function ListaPrecios() {
     const { data, error } = await query;
     if (data) setProductos(data);
     else console.error(error);
+
+    if (isAdmin) {
+      try {
+        const { data: kData } = await supabase
+          .from('inventario_movimientos')
+          .select('*')
+          .order('creado_en', { ascending: false })
+          .limit(50);
+        if (kData) setKardex(kData);
+      } catch (e) {
+        console.log('Kardex table does not exist yet');
+      }
+    }
     
     setLoading(false);
   }, [isAdmin]);
@@ -122,6 +142,56 @@ export default function ListaPrecios() {
         doc.save('Catalogo_Precios.pdf');
       });
     });
+  };
+
+  const handleRegistrarCompra = async () => {
+    if (!compraProd || !compraCant || !compraCosto) return;
+    const cant = parseInt(compraCant);
+    const costoT = parseFloat(compraCosto);
+    if (isNaN(cant) || cant <= 0 || isNaN(costoT) || costoT <= 0) return;
+
+    setSavingCompra(true);
+    const p = productos.find(x => x.id === compraProd);
+
+    try {
+      // 1. Aumentar stock y actualizar precio de costo promedio
+      const nuevoStock = (p.stock || 0) + cant;
+      const nuevoCostoU = costoT / cant;
+      
+      const { error: eStock } = await supabase.from('lista_precios').update({
+        stock: nuevoStock,
+        precio_costo: nuevoCostoU // Opcional: promedio ponderado
+      }).eq('id', p.id);
+      if (eStock) throw eStock;
+
+      // 2. Registrar Kardex
+      await supabase.from('inventario_movimientos').insert({
+        producto_id: p.id,
+        producto_nombre: p.producto,
+        cantidad_cambio: cant,
+        tipo: 'compra',
+        creado_por: user.id
+      });
+
+      // 3. Registrar Egreso (Caja)
+      await supabase.from('transactions').insert({
+        tipo: 'egreso',
+        monto: costoT,
+        metodo_pago: 'efectivo',
+        concepto: `COMPRA INVENTARIO - ${p.producto}`,
+        detalles: { categoria: 'proveedores' },
+        creado_por: user.id
+      });
+
+      alert(`¡Compra de ${cant} ${p.producto} registrada correctamente!`);
+      setCompraProd('');
+      setCompraCant('');
+      setCompraCosto('');
+      fetchPrecios();
+    } catch (err) {
+      alert("Error registrando compra: " + err.message);
+    }
+    setSavingCompra(false);
   };
 
   const inventarioStats = useMemo(() => {
@@ -230,8 +300,28 @@ export default function ListaPrecios() {
         </div>
       )}
 
-      {/* ══ BUSCADOR ══ */}
-      <div style={{ padding: '0 20px', marginTop: isAdmin ? 16 : -24, position: 'relative', zIndex: 10 }}>
+      {/* ══ TABS (Solo Admin) ══ */}
+      {isAdmin && (
+        <div style={{ padding: '0 20px', marginTop: 16, position: 'relative', zIndex: 10 }}>
+          <div style={{ display: 'flex', background: 'white', borderRadius: 20, padding: 6, boxShadow: '0 10px 40px rgba(0,0,0,0.08)', overflowX: 'auto', border: '1px solid rgba(226,232,240,0.8)' }}>
+            <button onClick={() => setActiveTab('catalogo')} style={{ flex: 1, minWidth: 120, padding: '14px 10px', border: 'none', borderRadius: 16, background: activeTab === 'catalogo' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'catalogo' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'catalogo' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
+              📚 Catálogo
+            </button>
+            <button onClick={() => setActiveTab('compras')} style={{ flex: 1, minWidth: 120, padding: '14px 10px', border: 'none', borderRadius: 16, background: activeTab === 'compras' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'compras' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'compras' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
+              🛒 Ingresar Compras
+            </button>
+            <button onClick={() => setActiveTab('kardex')} style={{ flex: 1, minWidth: 120, padding: '14px 10px', border: 'none', borderRadius: 16, background: activeTab === 'kardex' ? 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)' : 'transparent', color: activeTab === 'kardex' ? 'white' : '#64748b', fontWeight: 800, fontSize: 13, cursor: 'pointer', transition: 'all 0.3s ease', whiteSpace: 'nowrap', boxShadow: activeTab === 'kardex' ? '0 4px 15px rgba(15,110,86,0.25)' : 'none' }}>
+              🕵️ Kardex
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ══ CONTENIDO TABS ══ */}
+      {(!isAdmin || activeTab === 'catalogo') && (
+        <>
+          {/* ══ BUSCADOR ══ */}
+          <div style={{ padding: '0 20px', marginTop: isAdmin ? 16 : -24, position: 'relative', zIndex: 10 }}>
         <div style={{ 
           background: 'white', borderRadius: 20, display: 'flex', alignItems: 'center', padding: '12px 18px',
           boxShadow: '0 8px 25px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9'
@@ -333,9 +423,82 @@ export default function ListaPrecios() {
           </table>
         )}
       </div>
+      </>
+      )}
+
+      {isAdmin && activeTab === 'compras' && (
+        <div style={{ padding: '20px' }}>
+          <div style={{ background: 'white', borderRadius: 24, padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+            <h3 style={{ margin: '0 0 20px', fontSize: 18, fontWeight: 900, color: '#0f172a', letterSpacing: '-0.5px' }}>Registrar Compra a Proveedor</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Producto (Inventario Actual)</label>
+                <select value={compraProd} onChange={e => setCompraProd(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: 14, fontWeight: 700, outline: 'none', background: '#f8fafc', color: '#334155' }}>
+                  <option value="">-- Seleccionar --</option>
+                  {productos.map(p => (
+                    <option key={p.id} value={p.id}>{p.producto} (Stock: {p.stock || 0})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Cantidad que Compraste</label>
+                <input type="number" value={compraCant} onChange={e => setCompraCant(e.target.value)} placeholder="0" style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: 14, fontWeight: 800, outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Total Pagado ($)</label>
+                <input type="number" value={compraCosto} onChange={e => setCompraCosto(e.target.value)} placeholder="0" style={{ width: '100%', boxSizing: 'border-box', padding: '12px', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: 14, fontWeight: 800, outline: 'none' }} />
+              </div>
+            </div>
+            
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: 16, borderRadius: 16, marginBottom: 20 }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
+                <strong>Automático:</strong> Esto sumará el stock, recalculará el costo unitario, registrará el movimiento en el Kardex y generará el Egreso en Caja automáticamente.
+              </p>
+            </div>
+
+            <button 
+              onClick={handleRegistrarCompra}
+              disabled={savingCompra || !compraProd}
+              style={{ width: '100%', padding: '16px', background: 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)', border: 'none', borderRadius: 14, color: 'white', fontWeight: 800, fontSize: 15, cursor: (savingCompra || !compraProd) ? 'not-allowed' : 'pointer', boxShadow: '0 8px 20px rgba(15,110,86,0.25)', transition: 'all 0.3s ease', textTransform: 'uppercase', letterSpacing: 0.5 }}
+            >
+              {savingCompra ? 'Procesando...' : 'Confirmar Compra'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && activeTab === 'kardex' && (
+        <div style={{ padding: '20px' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 900, color: '#64748b', margin: '0 0 16px 8px', textTransform: 'uppercase', letterSpacing: 1 }}>Auditoría de Movimientos</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {kardex.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: 20, background: 'white', borderRadius: 20 }}>No hay movimientos registrados.</p>
+            ) : kardex.map(k => (
+              <div key={k.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'white', borderRadius: 20, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #f8fafc' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 16, background: k.tipo === 'compra' ? '#d1fae5' : (k.tipo === 'venta' ? '#fee2e2' : '#e0e7ff'), color: k.tipo === 'compra' ? '#10b981' : (k.tipo === 'venta' ? '#ef4444' : '#6366f1'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                    {k.tipo === 'compra' ? '📦' : (k.tipo === 'venta' ? '🛍️' : '🔧')}
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{k.producto_nombre}</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                      {new Date(k.creado_en).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} • {k.tipo.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: 0, fontSize: 18, fontWeight: 900, color: k.cantidad_cambio >= 0 ? '#10b981' : '#ef4444' }}>
+                    {k.cantidad_cambio >= 0 ? '+' : ''}{k.cantidad_cambio}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Botón Cargar Más */}
-      {visibleCount < filteredProductos.length && (
+      {(!isAdmin || activeTab === 'catalogo') && visibleCount < filteredProductos.length && (
         <div style={{ textAlign: 'center', padding: '20px' }}>
           <button 
             onClick={() => setVisibleCount(v => v + 50)}
