@@ -30,10 +30,11 @@ export default function ProductSearch({ products, value, onChange, placeholder =
       .slice(0, 15); // Limitado a 15 para máximo rendimiento de pintado DOM
   }, [products, search]);
 
-  const handleSelect = (productName) => {
-    setSearch(productName);
+  const handleSelect = (product) => {
+    const fullName = product.marca ? `${product.producto} (${product.marca})` : product.producto;
+    setSearch(fullName);
     setIsOpen(false);
-    onChange(productName);
+    onChange(fullName);
   };
 
   return (
@@ -59,7 +60,7 @@ export default function ProductSearch({ products, value, onChange, placeholder =
             {filtered.map(p => (
               <div
                 key={p.id}
-                onClick={() => handleSelect(p.producto)}
+                onClick={() => handleSelect(p)}
                 style={{ padding: '12px 14px', borderRadius: 10, cursor: 'pointer', transition: 'background 0.2s', fontSize: 14, color: '#084032', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
                 onMouseLeave={(e) => e.target.style.background = 'transparent'}
