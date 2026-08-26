@@ -147,14 +147,11 @@ export default function EditarPedido({ params }) {
         
         {/* Medicamentos */}
         <div style={{ background: 'white', padding: 24, borderRadius: 28, boxShadow: '0 10px 30px rgba(0,0,0,0.04)', border:'1px solid #f1f5f9' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
             <div>
                <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'var(--brand-dark)' }}>💊 Medicamentos</h2>
                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Ajusta los productos a entregar</p>
             </div>
-            <button type="button" onClick={agregarItem} style={{ background: 'rgba(15,110,86,0.1)', color: 'var(--brand)', border: 'none', width:40, height:40, borderRadius: 14, fontSize: 22, fontWeight: 800, cursor: 'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              +
-            </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -187,6 +184,16 @@ export default function EditarPedido({ params }) {
                  <p style={{ color: '#ef4444', fontSize: 14, fontWeight:700, margin: 0 }}>Debes agregar al menos un medicamento.</p>
               </div>
             )}
+            
+            <button type="button" onClick={agregarItem} style={{
+              background: 'rgba(15,110,86,0.05)', border: '2px dashed rgba(15,110,86,0.3)', borderRadius: 14,
+              color: '#0F6E56', padding: '12px', cursor: 'pointer', width: '100%',
+              fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'all .2s'
+            }}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>＋</span>
+              <span>Añadir medicamento</span>
+            </button>
           </div>
         </div>
 

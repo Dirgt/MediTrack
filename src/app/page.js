@@ -627,24 +627,12 @@ export default function CrearPedido() {
           {/* ─ CARD: Medicamentos ─ */}
           <div style={{ background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.5)', borderRadius: 22, boxShadow: '0 8px 32px rgba(15,110,86,0.08)', position: 'relative', zIndex: 20 }}>
             {/* Header */}
-            <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(15,110,86,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>💊</div>
-                <div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.8px', display: 'block' }}>Medicamentos</span>
-                  <span style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 600 }}>{items.length} producto{items.length !== 1 ? 's' : ''} · {totalItems} unidad{totalItems !== 1 ? 'es' : ''}</span>
-                </div>
+            <div style={{ padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(15,110,86,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>💊</div>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.8px', display: 'block' }}>Medicamentos</span>
+                <span style={{ fontSize: 11, color: 'var(--brand)', fontWeight: 600 }}>{items.length} producto{items.length !== 1 ? 's' : ''} · {totalItems} unidad{totalItems !== 1 ? 'es' : ''}</span>
               </div>
-              {/* Botón agregar — ahora claramente etiquetado */}
-              <button type="button" onClick={addItem} style={{
-                background: '#0F6E56', border: '2px solid #0F6E56', borderRadius: 12,
-                color: '#ffffff', padding: '8px 14px', cursor: 'pointer',
-                fontSize: 13, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6,
-                boxShadow: '0 4px 14px rgba(15,110,86,0.35)', flexShrink: 0,
-              }}>
-                <span style={{ fontSize: 16, lineHeight: 1, color: '#ffffff' }}>＋</span>
-                <span style={{ color: '#ffffff' }}>Añadir medicamento</span>
-              </button>
             </div>
 
             {/* Filas de items */}
@@ -689,6 +677,16 @@ export default function CrearPedido() {
                   </div>
                 </div>
               ))}
+              
+              <button type="button" onClick={addItem} style={{
+                background: 'rgba(15,110,86,0.05)', border: '2px dashed rgba(15,110,86,0.3)', borderRadius: 14,
+                color: '#0F6E56', padding: '12px', cursor: 'pointer', width: '100%',
+                fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                marginTop: 8, transition: 'all .2s'
+              }}>
+                <span style={{ fontSize: 18, lineHeight: 1 }}>＋</span>
+                <span>Añadir medicamento</span>
+              </button>
             </div>
           </div>
 

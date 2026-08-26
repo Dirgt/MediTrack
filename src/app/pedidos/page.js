@@ -268,7 +268,10 @@ function ModalAccion({ accion, pedido, adminId, repartidores = [], onConfirm, on
             </label>
             <input type="text" value={idFactura} onChange={e => setIdFactura(e.target.value)}
               placeholder="Ej: FE-12345"
-              style={{ width:'100%', boxSizing:'border-box', border:'2px solid #e5e7eb', borderRadius:16, padding:'14px', fontSize:15, outline:'none', fontFamily:'inherit' }}/>
+              style={{ width:'100%', boxSizing:'border-box', border:'2px solid #e5e7eb', borderRadius:16, padding:'14px', fontSize:15, outline:'none', fontFamily:'inherit', transition: 'border-color .2s' }}
+              onFocus={e => e.target.style.borderColor = accion.color}
+              onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+            />
           </div>
         )}
 
