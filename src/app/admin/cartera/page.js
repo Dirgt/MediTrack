@@ -12,6 +12,11 @@ export default function CarteraYLiquidacion() {
   const [activeTab, setActiveTab] = useState('repartidores'); // 'repartidores' | 'creditos' | 'movimientos'
   const [loading, setLoading] = useState(true);
   
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  
   const [entregasPendientes, setEntregasPendientes] = useState([]);
   const [creditosPendientes, setCreditosPendientes] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
@@ -34,7 +39,7 @@ export default function CarteraYLiquidacion() {
     setLoading(true);
     
     // 1. Entregas de Contado sin liquidar (Dinero en bolsillo del repartidor)
-    const { data: entregas } = await supabase
+    let entregasQuery = supabase
       .from('orders')
       .select('id, numero_pedido, cliente_nombre, recaudo_valor, recaudo_metodo, repartidor_id, profiles!orders_repartidor_id_fkey(nombre_completo)')
       .eq('estado', 'entregado')
@@ -42,11 +47,8 @@ export default function CarteraYLiquidacion() {
       .eq('liquidado_admin', false)
       .order('numero_pedido', { ascending: false });
       
-    if (entregas) setEntregasPendientes(entregas);
-
     // 2. Pedidos a Crédito sin liquidar (Cartera en la calle)
-    // Seleccionamos * para incluir monto_abonado (si existe) y evitamos crash si no se ha migrado
-    const { data: creditos } = await supabase
+    let creditosQuery = supabase
       .from('orders')
       .select('*, per_vendedor:profiles!orders_vendedor_id_fkey(nombre_completo), items:order_items(cantidad, precio_venta_historico)')
       .eq('estado', 'entregado')
@@ -54,6 +56,24 @@ export default function CarteraYLiquidacion() {
       .eq('pagado', false)
       .eq('liquidado_admin', false)
       .order('fecha_entrega', { ascending: true });
+
+    // 3. Movimientos (Transacciones ERP)
+    let txsQuery = supabase
+      .from('transactions')
+      .select('*')
+      .order('creado_en', { ascending: false })
+      .limit(50);
+
+    if (selectedMonth !== 'todos') {
+      entregasQuery = entregasQuery.eq('mes', selectedMonth);
+      creditosQuery = creditosQuery.eq('mes', selectedMonth);
+      txsQuery = txsQuery.eq('mes', selectedMonth);
+    }
+
+    const { data: entregas } = await entregasQuery;
+    if (entregas) setEntregasPendientes(entregas);
+
+    const { data: creditos } = await creditosQuery;
 
     // Sumar totales para los créditos
     const creditosConTotal = (creditos || []).map(c => {
@@ -64,13 +84,7 @@ export default function CarteraYLiquidacion() {
 
     setCreditosPendientes(creditosConTotal);
 
-    // 3. Movimientos (Transacciones ERP)
-    const { data: txs } = await supabase
-      .from('transactions')
-      .select('*')
-      .order('creado_en', { ascending: false })
-      .limit(50);
-      
+    const { data: txs } = await txsQuery;
     if (txs) setMovimientos(txs);
 
     // 4. Cierres Z
@@ -87,7 +101,7 @@ export default function CarteraYLiquidacion() {
     }
 
     setLoading(false);
-  }, []);
+  }, [selectedMonth]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -256,7 +270,30 @@ export default function CarteraYLiquidacion() {
         <div style={{ position: 'relative', zIndex: 1 }}>
           <span style={{ fontSize: 32, display: 'block', marginBottom: 4 }}>💵</span>
           <h1 style={{ color: 'white', fontSize: 28, fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Caja y Cartera</h1>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: '6px 0 0', fontWeight: 500 }}>Recepción de dinero y cobros ERP</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6 }}>
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0, fontWeight: 500 }}>Recepción de dinero y cobros ERP</p>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: 'white', fontSize: 13, fontWeight: 700 }}>Mes:</span>
+              <select 
+                value={selectedMonth} 
+                onChange={e => setSelectedMonth(e.target.value)}
+                style={{ 
+                  background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', 
+                  borderRadius: 12, padding: '6px 12px', fontSize: 13, fontWeight: 600, outline: 'none', cursor: 'pointer' 
+                }}
+              >
+                <option value="todos" style={{ color: '#0f172a' }}>Todos</option>
+                {Array.from({length: 12}).map((_, i) => {
+                  const d = new Date();
+                  d.setMonth(d.getMonth() - i);
+                  const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                  const label = d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+                  return <option key={val} value={val} style={{ color: '#0f172a' }}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
+                })}
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -11,7 +11,10 @@ export default function ReportesDashboard() {
   const { profile, loading: userLoading } = useUser();
   const [loading, setLoading] = useState(true);
   
-  const [timeFilter, setTimeFilter] = useState('30d');
+  const [timeFilter, setTimeFilter] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   
   // States
   const [kpis, setKpis] = useState({
@@ -25,22 +28,65 @@ export default function ReportesDashboard() {
   
   const [vendedores, setVendedores] = useState([]);
   const [trend, setTrend] = useState([]);
+  const [ruteroStats, setRuteroStats] = useState([]);
+
+  const fetchRuteroStats = useCallback(async () => {
+    try {
+      const now = new Date();
+      const day = now.getDay();
+      const diff = day === 0 ? 6 : day - 1;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() - diff);
+      monday.setHours(0, 0, 0, 0);
+      const startOfWeek = monday.toISOString();
+
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+      const startOfDayISO = startOfDay.toISOString();
+
+      const { data: vends } = await supabase.from('profiles').select('id, nombre_completo').eq('role', 'vendedor');
+      if (!vends) return;
+
+      const { data: weekVisits } = await supabase.from('visitas').select('vendedor_id, creado_en').eq('estado', 'completada').gte('creado_en', startOfWeek);
+      const { data: allAlerts } = await supabase.from('alertas_visitas_atrasadas').select('vendedor_id');
+
+      const stats = vends.map(v => {
+        const vVisits = weekVisits?.filter(vis => vis.vendedor_id === v.id) || [];
+        const visitasSemana = vVisits.length;
+        const visitasHoy = vVisits.filter(vis => vis.creado_en >= startOfDayISO).length;
+        const clientesAlerta = allAlerts?.filter(a => a.vendedor_id === v.id).length || 0;
+        const efectividad = Math.min(100, Math.round((visitasSemana / 60) * 100));
+
+        return {
+          id: v.id,
+          nombre: v.nombre_completo || 'Sin Nombre',
+          visitasSemana,
+          visitasHoy,
+          clientesAlerta,
+          efectividad
+        };
+      });
+
+      setRuteroStats(stats.sort((a,b) => b.efectividad - a.efectividad));
+    } catch(e) {
+      console.error(e);
+    }
+  }, []);
 
   const fetchReportes = useCallback(async () => {
     try {
-      const limitDate = new Date();
-      if (timeFilter === 'today') limitDate.setHours(0,0,0,0);
-      else if (timeFilter === '7d') limitDate.setDate(limitDate.getDate() - 7);
-      else if (timeFilter === '30d') limitDate.setDate(limitDate.getDate() - 30);
-      else if (timeFilter === 'all') limitDate.setFullYear(2020);
+      let txsQuery = supabase.from('transactions').select('*');
       
-      const limitISO = limitDate.toISOString();
-
+      if (timeFilter !== 'todos') {
+        txsQuery = txsQuery.eq('mes', timeFilter);
+      } else {
+        const limitDate = new Date();
+        limitDate.setFullYear(2020);
+        txsQuery = txsQuery.gte('creado_en', limitDate.toISOString());
+      }
+      
       // 1. Obtener Transacciones de CAJA REAL
-      const { data: txs } = await supabase
-        .from('transactions')
-        .select('*')
-        .gte('creado_en', limitISO);
+      const { data: txs } = await txsQuery;
         
       if (!txs) return;
 
@@ -150,8 +196,9 @@ export default function ReportesDashboard() {
     if (profile?.role === 'admin') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchReportes();
+      fetchRuteroStats();
     }
-  }, [profile, fetchReportes]);
+  }, [profile, fetchReportes, fetchRuteroStats]);
 
   const formatearDinero = (val) => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 }).format(val);
 
@@ -175,17 +222,25 @@ export default function ReportesDashboard() {
         </div>
         
         {/* ── FILTROS (STRICT) ── */}
-        <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', borderRadius: 6, overflow: 'hidden', width: 'fit-content', border: '1px solid rgba(255,255,255,0.1)' }}>
-          {[
-            { id: 'today', label: 'HOY' },
-            { id: '7d', label: '7 DÍAS' },
-            { id: '30d', label: '30 DÍAS' },
-            { id: 'all', label: 'HISTÓRICO' }
-          ].map(f => (
-            <button key={f.id} onClick={() => setTimeFilter(f.id)} style={{ padding: '8px 16px', border: 'none', background: timeFilter === f.id ? '#0F6E56' : 'transparent', color: timeFilter === f.id ? 'white' : '#cbd5e1', fontWeight: 600, fontSize: 11, cursor: 'pointer', transition: 'all 0.2s ease', borderRight: '1px solid rgba(255,255,255,0.05)' }}>
-              {f.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'white', fontSize: 13, fontWeight: 700, textTransform: 'uppercase' }}>Filtrar Mes:</span>
+          <select 
+            value={timeFilter} 
+            onChange={e => setTimeFilter(e.target.value)}
+            style={{ 
+              background: 'rgba(0,0,0,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', 
+              borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, outline: 'none', cursor: 'pointer' 
+            }}
+          >
+            <option value="todos" style={{ color: '#0f172a' }}>HISTÓRICO (TODOS)</option>
+            {Array.from({length: 12}).map((_, i) => {
+              const d = new Date();
+              d.setMonth(d.getMonth() - i);
+              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const label = d.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+              return <option key={val} value={val} style={{ color: '#0f172a' }}>{label.toUpperCase()}</option>
+            })}
+          </select>
         </div>
       </div>
 
@@ -319,6 +374,72 @@ export default function ReportesDashboard() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ── RENDIMIENTO DE RUTAS (RUTERO) ── */}
+        <div style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflow: 'hidden', marginTop: 20 }}>
+          <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 16px' }}>
+            <h3 style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>🗺️ Rendimiento de Rutas (Esta Semana)</h3>
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: '#64748b', lineHeight: 1.3 }}>
+              Supervisa el cumplimiento de la meta de visitas de cada vendedor y la cantidad de clientes en alerta roja.
+            </p>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: 600 }}>
+            <thead style={{ background: '#f1f5f9', fontSize: 11, color: '#475569', textTransform: 'uppercase' }}>
+              <tr>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid #cbd5e1' }}>Vendedor</th>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid #cbd5e1', textAlign: 'center' }}>Efectividad</th>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid #cbd5e1', textAlign: 'center' }}>Visitas Semana</th>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid #cbd5e1', textAlign: 'center' }}>Visitas Hoy</th>
+                <th style={{ padding: '10px 16px', borderBottom: '1px solid #cbd5e1', textAlign: 'center' }}>Clientes en Alerta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ruteroStats.map(rs => (
+                <tr key={rs.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                    {rs.nombre}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <span style={{ 
+                      fontSize: 12, fontWeight: 700, 
+                      color: rs.efectividad >= 80 ? '#059669' : rs.efectividad >= 50 ? '#d97706' : '#dc2626',
+                      background: rs.efectividad >= 80 ? '#d1fae5' : rs.efectividad >= 50 ? '#fef3c7' : '#fee2e2',
+                      padding: '4px 8px', borderRadius: 12
+                    }}>
+                      {rs.efectividad}%
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#475569', textAlign: 'center' }}>
+                    {rs.visitasSemana} <span style={{ fontSize: 11, color: '#9ca3af' }}>/ 60</span>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#475569', textAlign: 'center' }}>
+                    {rs.visitasHoy}
+                  </td>
+                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    {rs.clientesAlerta > 0 ? (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#dc2626', background: '#fee2e2', padding: '4px 8px', borderRadius: 12 }}>
+                        ⚠️ {rs.clientesAlerta}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#059669' }}>
+                        ✓ 0
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {ruteroStats.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ padding: '20px', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+                    No hay vendedores registrados
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          </div>
         </div>
 
       </div>
