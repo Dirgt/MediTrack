@@ -75,7 +75,7 @@ export default function ReportesDashboard() {
 
   const fetchReportes = useCallback(async () => {
     try {
-      let txsQuery = supabase.from('transactions').select('*');
+      let txsQuery = supabase.from('transactions').select('monto, tipo, creado_en, referencia_id');
       
       if (timeFilter !== 'todos') {
         txsQuery = txsQuery.eq('mes', timeFilter);
@@ -117,9 +117,21 @@ export default function ReportesDashboard() {
       let vendedoresMap = {};
 
       if (refIds.length > 0) {
-        // Obtenemos los pedidos liquidados con sus items y el catálogo de precios actual
-        const [ { data: orders }, { data: catalog } ] = await Promise.all([
-          supabase
+        // Obtenemos el catálogo
+        const { data: catalog } = await supabase.from('lista_precios').select('producto, precio_costo');
+        const catalogoMap = {};
+        if (catalog) {
+          catalog.forEach(c => {
+            if (c.producto) catalogoMap[c.producto] = parseFloat(c.precio_costo) || 0;
+          });
+        }
+
+        // Chunking the refIds to avoid PostgREST URI limits and massive DB locks
+        const chunkSize = 150;
+        let orders = [];
+        for (let i = 0; i < refIds.length; i += chunkSize) {
+          const chunk = refIds.slice(i, i + chunkSize);
+          const { data: chunkOrders } = await supabase
             .from('orders')
             .select(`
               id,
@@ -127,16 +139,11 @@ export default function ReportesDashboard() {
               profiles!orders_vendedor_id_fkey(nombre_completo),
               order_items(cantidad, precio_costo, precio_venta_historico, medicamento_nombre)
             `)
-            .in('id', refIds),
-          supabase.from('lista_precios').select('producto, precio_costo')
-        ]);
-
-        // Mapa de costos base para histórico
-        const catalogoMap = {};
-        if (catalog) {
-          catalog.forEach(c => {
-            if (c.producto) catalogoMap[c.producto] = parseFloat(c.precio_costo) || 0;
-          });
+            .in('id', chunk);
+          
+          if (chunkOrders) {
+            orders = orders.concat(chunkOrders);
+          }
         }
 
         if (orders) {

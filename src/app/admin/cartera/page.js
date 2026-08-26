@@ -55,7 +55,7 @@ export default function CarteraYLiquidacion() {
     // 2. Pedidos a Crédito sin liquidar (Cartera en la calle)
     let creditosQuery = supabase
       .from('orders')
-      .select('*, per_vendedor:profiles!orders_vendedor_id_fkey(nombre_completo), items:order_items(cantidad, precio_venta_historico)')
+      .select('id, numero_pedido, cliente_nombre, fecha_entrega, monto_abonado, recaudo_valor, per_vendedor:profiles!orders_vendedor_id_fkey(nombre_completo), items:order_items(cantidad, precio_venta_historico)')
       .eq('estado', 'entregado')
       .eq('tipo_pago', 'credito')
       .eq('pagado', false)
