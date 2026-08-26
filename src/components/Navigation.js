@@ -318,12 +318,18 @@ export default function Navigation() {
         overflowX: 'auto',
         WebkitOverflowScrolling: 'touch',
         alignItems: 'center',
+        justifyContent: 'flex-start',
+        gap: 8,
         padding: '10px 16px max(16px, env(safe-area-inset-bottom))',
         zIndex: 900,
         boxShadow: '0 -2px 20px rgba(0,0,0,0.06)',
         scrollbarWidth: 'none', /* Firefox */
         msOverflowStyle: 'none', /* IE and Edge */
       }}>
+        {/* Hide scrollbar for Chrome/Safari inside a style tag below */}
+        <style>{`
+          .bottom-nav::-webkit-scrollbar { display: none; }
+        `}</style>
 
         {/* 1. Mi Cuenta — visible para todos */}
         <button
@@ -539,6 +545,38 @@ export default function Navigation() {
               lineHeight: 1, marginTop: 4
             }}>
               Calendario
+            </span>
+          </Link>
+        )}
+
+        {/* 4.6. Rutero — Solo admin y vendedor */}
+        {!isRepartidor && (
+          <Link
+            href="/rutero"
+            style={{
+              textDecoration: 'none',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0,
+              gap: 4, padding: '4px 10px', borderRadius: 12,
+              background: pathname === '/rutero' ? 'rgba(13,148,136,0.12)' : 'transparent',
+              transition: 'background 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <span style={{
+              fontSize: 22,
+              filter: pathname === '/rutero' ? 'none' : 'grayscale(100%) opacity(45%)',
+              transition: 'filter 0.2s',
+              lineHeight: 1,
+              display: 'block'
+            }}>
+              🗺️
+            </span>
+            <span style={{
+              fontSize: 10, fontWeight: pathname === '/rutero' ? 700 : 500,
+              color: pathname === '/rutero' ? '#0d9488' : '#9ca3af',
+              lineHeight: 1, marginTop: 4
+            }}>
+              Rutero
             </span>
           </Link>
         )}
