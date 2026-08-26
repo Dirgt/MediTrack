@@ -142,14 +142,15 @@ export default function CarteraYLiquidacion() {
           recaudo_valor: valor 
         }).eq('id', pedidoId);
         
-        // 2. Registrar ingreso en ERP
+        // 2. Registrar ingreso en ERP (Con fecha del pedido para que cuadre el mes)
         await supabase.from('transactions').insert({
           tipo: 'ingreso',
           monto: valor,
           metodo_pago: metodo || 'efectivo',
           concepto: 'Liquidación de entrega',
           referencia_id: pedidoId,
-          creado_por: user.id
+          creado_por: user.id,
+          creado_en: modalData.pedido.fecha_entrega
         });
       } else if (modalData.type === 'credito') {
         const pedido = modalData.pedido;
@@ -173,7 +174,8 @@ export default function CarteraYLiquidacion() {
           metodo_pago: 'efectivo',
           concepto: pagadoCompletamente ? 'Pago Total de Cartera' : 'Abono Parcial a Cartera',
           referencia_id: pedido.id,
-          creado_por: user.id
+          creado_por: user.id,
+          creado_en: pedido.fecha_entrega
         });
       }
 
