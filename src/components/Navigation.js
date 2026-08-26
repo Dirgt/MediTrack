@@ -318,7 +318,6 @@ export default function Navigation() {
         overflowX: 'auto',
         WebkitOverflowScrolling: 'touch',
         alignItems: 'center',
-        justifyContent: 'flex-start',
         gap: 12,
         padding: '10px 16px max(16px, env(safe-area-inset-bottom))',
         zIndex: 900,
@@ -729,6 +728,14 @@ export default function Navigation() {
       {showProfile && <ProfileSheet onClose={() => setShowProfile(false)} />}
 
       <style>{`
+        .bottom-nav {
+          justify-content: flex-start;
+        }
+        @media (min-width: 768px) {
+          .bottom-nav {
+            justify-content: center;
+          }
+        }
         .bottom-nav::-webkit-scrollbar { display: none; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
