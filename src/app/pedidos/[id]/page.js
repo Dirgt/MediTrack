@@ -74,7 +74,7 @@ export default function DetallePedido({ params }) {
         .select(`
           id, cliente_nombre, estado, creado_en, actualizado_en,
           observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
-          intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id,
+          intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, id_factura,
           order_items(id, medicamento_nombre, cantidad, precio_costo, precio_venta_historico),
           profiles!orders_vendedor_id_fkey(id, nombre_completo)
         `)
@@ -223,6 +223,7 @@ export default function DetallePedido({ params }) {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             {[
               { label:'Tipo Factura',  value: pedido.tipo_factura === 'factura_electronica' ? '📄 Electrónica' : '🧾 Remisión' },
+              { label:'ID Factura',    value: pedido.id_factura || '—' },
               { label:'Tipo Pago',     value: pedido.tipo_pago === 'credito' ? '💳 Crédito' : '💵 Contado' },
               { label:'Fecha Entrega', value: pedido.fecha_entrega ? new Date(pedido.fecha_entrega + 'T12:00:00').toLocaleDateString('es-CO', { month:'short', day:'numeric' }) : '—' },
               { label:'Intentos',      value: pedido.intentos_entrega || 0 },

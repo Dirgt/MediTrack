@@ -97,6 +97,9 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
     if (nuevoEstado === 'en_camino') {
       update.repartidor_id = opciones.repartidorId || null;
     }
+    if (nuevoEstado === 'facturando') {
+      update.id_factura = opciones.id_factura || null;
+    }
     if (nuevoEstado === 'entregado') {
       update.pagado = true;
     }
@@ -115,7 +118,7 @@ export async function cambiarEstadoPedido(orderId, nuevoEstado, opciones = {}) {
       order_id:        orderId,
       estado_anterior: order.estado,
       estado_nuevo:    nuevoEstado,
-      nota_interna:    opciones.notas || opciones.motivo_rechazo || opciones.nota_reintento || opciones.motivo_cancelacion || (nuevoEstado === 'en_camino' ? 'Pedido asignado a repartidor' : null),
+      nota_interna:    opciones.notas || opciones.motivo_rechazo || opciones.nota_reintento || opciones.motivo_cancelacion || (nuevoEstado === 'en_camino' ? 'Pedido asignado a repartidor' : (nuevoEstado === 'facturando' && opciones.id_factura ? `Factura generada: ${opciones.id_factura}` : null)),
       cambiado_por:    opciones.adminId || null,
     });
 

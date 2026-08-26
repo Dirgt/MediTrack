@@ -171,15 +171,18 @@ function ModalAccion({ accion, pedido, adminId, repartidores = [], onConfirm, on
   const [nota, setNota]       = useState('');
   const [fecha, setFecha]     = useState('');
   const [repartidorId, setRepartidorId] = useState('');
+  const [idFactura, setIdFactura] = useState('');
   const [loading, setLoading] = useState(false);
 
   const esRechazo   = accion.a === 'rechazado_puerta';
   const esReintento = accion.a === 'programado_reintento';
   const esDespacho  = accion.a === 'en_camino';
+  const esFacturacion = accion.a === 'facturando';
 
   const handleConfirm = async () => {
     if (esRechazo && !motivo.trim()) return alert('El motivo del rechazo es obligatorio');
     if (esDespacho && !repartidorId) return alert('Debes seleccionar un repartidor para el despacho');
+    if (esFacturacion && !idFactura.trim()) return alert('El ID de factura es obligatorio');
     
     setLoading(true);
     await onConfirm({
@@ -187,7 +190,8 @@ function ModalAccion({ accion, pedido, adminId, repartidores = [], onConfirm, on
       nota_reintento: esReintento ? nota : null,
       fecha_reintento: fecha ? new Date(fecha).toISOString() : null,
       repartidorId: esDespacho ? repartidorId : null,
-      notas: (!esRechazo && !esReintento) ? nota : null,
+      id_factura: esFacturacion ? idFactura : null,
+      notas: (!esRechazo && !esReintento && !esFacturacion) ? nota : null,
       adminId,
     });
     setLoading(false);
@@ -257,7 +261,18 @@ function ModalAccion({ accion, pedido, adminId, repartidores = [], onConfirm, on
           </div>
         )}
 
-        {(!esRechazo && !esReintento) && (
+        {esFacturacion && (
+          <div style={{ marginBottom:20 }}>
+            <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#084032', marginBottom:8 }}>
+              🧾 ID o Número de Factura <span style={{color:'#ef4444'}}>*</span>
+            </label>
+            <input type="text" value={idFactura} onChange={e => setIdFactura(e.target.value)}
+              placeholder="Ej: FE-12345"
+              style={{ width:'100%', boxSizing:'border-box', border:'2px solid #e5e7eb', borderRadius:16, padding:'14px', fontSize:15, outline:'none', fontFamily:'inherit' }}/>
+          </div>
+        )}
+
+        {(!esRechazo && !esReintento && !esFacturacion) && (
           <div style={{ marginBottom:20 }}>
             <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#084032', marginBottom:8 }}>📝 Nota Interna (Opcional)</label>
             <input type="text" value={nota} onChange={e => setNota(e.target.value)}
@@ -310,6 +325,11 @@ function ModalDetalle({ pedido, historial, onCancel, isAdmin, accs, onAccion, on
             <div style={{ background: 'rgba(100,116,139,0.15)', color: '#475569', padding:'4px 12px', borderRadius:10, fontSize:12, fontWeight:800 }}>
                {pedido.tipo_factura === 'factura_electronica' ? '📄 ELECTRÓNICA' : '🧾 FÍSICA/REM'}
             </div>
+            {pedido.id_factura && (
+              <div style={{ background: 'rgba(15,110,86,0.15)', color: '#084032', padding:'4px 12px', borderRadius:10, fontSize:12, fontWeight:800 }}>
+                 🧾 FACTURA: {pedido.id_factura}
+              </div>
+            )}
           </div>
         </div>
 
@@ -485,7 +505,7 @@ export default function MisPedidos() {
         .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
                  observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
                  intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
-                 recaudo_metodo, recaudo_valor,
+                 recaudo_metodo, recaudo_valor, id_factura,
                  order_items(medicamento_nombre, cantidad),
                  profiles!orders_vendedor_id_fkey(id, nombre_completo),
                  repartidor:profiles!orders_repartidor_id_fkey(nombre_completo)`, { count: 'exact' })
@@ -552,7 +572,7 @@ export default function MisPedidos() {
           .select(`id, numero_pedido, cliente_nombre, estado, total_recaudo, creado_en, actualizado_en,
                    observaciones, motivo_rechazo, nota_reintento, fecha_reintento,
                    intentos_entrega, pagado, fecha_entrega, tipo_factura, tipo_pago, vendedor_id, localidad,
-                   recaudo_metodo, recaudo_valor,
+                   recaudo_metodo, recaudo_valor, id_factura,
                    order_items(medicamento_nombre, cantidad),
                    profiles!orders_vendedor_id_fkey(id, nombre_completo),
                    repartidor:profiles!orders_repartidor_id_fkey(nombre_completo)`)
@@ -977,6 +997,15 @@ export default function MisPedidos() {
                            }}>
                              {pedido.tipo_factura === 'factura_electronica' ? '📄 Electrónica' : '🧾 Física'}
                            </span>
+                           {pedido.id_factura && (
+                             <span style={{
+                               fontSize:11, fontWeight:800, color:'#084032',
+                               background:'rgba(15,110,86,0.1)',
+                               padding:'4px 10px', borderRadius:10, textTransform:'uppercase'
+                             }}>
+                               🧾 ID FACTURA: {pedido.id_factura}
+                             </span>
+                           )}
 
                            {pedido.repartidor?.nombre_completo && (
                              <span style={{ fontSize:12, fontWeight:700, color:'#0d9488', background:'rgba(13,148,136,0.1)', padding:'4px 10px', borderRadius:10 }}>
