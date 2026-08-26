@@ -190,6 +190,30 @@ export default function CarteraYLiquidacion() {
     }
   };
 
+  const handlePasarACredito = async () => {
+    if (!confirm(`¿Estás seguro de que este pedido pasará a ser CRÉDITO? El repartidor no trajo el dinero y quedará por cobrar al cliente.`)) return;
+    
+    setIsSubmitting(true);
+    try {
+      await supabase.from('orders').update({
+        tipo_pago: 'credito',
+        recaudo_valor: 0,
+        monto_abonado: 0,
+        pagado: false,
+        liquidado_admin: false
+      }).eq('id', modalData.pedido.id);
+
+      setModalData(null);
+      setModalValor('');
+      fetchData();
+    } catch (e) {
+      alert("Error al pasar a crédito");
+      console.error(e);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleRegistrarEgreso = async () => {
     if (!egresoMonto || parseFloat(egresoMonto) <= 0) return;
     setSavingEgreso(true);
@@ -561,6 +585,17 @@ export default function CarteraYLiquidacion() {
               >
                 Cancelar
               </button>
+              
+              {modalData.type === 'repartidor' && (
+                <button
+                  onClick={handlePasarACredito}
+                  disabled={isSubmitting}
+                  style={{ flex: 1, padding: '16px', background: '#fffbeb', border: '2px solid #f59e0b', borderRadius: 16, color: '#d97706', fontWeight: 800, fontSize: 15, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                >
+                  Pasar a Crédito
+                </button>
+              )}
+
               <button 
                 onClick={handleConfirmModal}
                 disabled={isSubmitting}
