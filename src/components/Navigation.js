@@ -319,7 +319,7 @@ export default function Navigation() {
         WebkitOverflowScrolling: 'touch',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        gap: 8,
+        gap: 12,
         padding: '10px 16px max(16px, env(safe-area-inset-bottom))',
         zIndex: 900,
         boxShadow: '0 -2px 20px rgba(0,0,0,0.06)',
@@ -721,23 +721,14 @@ export default function Navigation() {
             </span>
           </Link>
         )}
+        {/* Spacer at the end to ensure the last item is not cut off by padding */}
+        <div style={{ flexShrink: 0, width: 4 }} />
       </nav>
 
       {/* Profile sheet */}
       {showProfile && <ProfileSheet onClose={() => setShowProfile(false)} />}
 
       <style>{`
-        .bottom-nav {
-          max-width: 600px;
-          margin: 0 auto;
-          justify-content: space-around;
-        }
-        @media (max-width: 480px) {
-          .bottom-nav {
-            justify-content: flex-start;
-            gap: 12px;
-          }
-        }
         .bottom-nav::-webkit-scrollbar { display: none; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
