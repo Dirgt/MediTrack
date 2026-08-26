@@ -679,12 +679,12 @@ export default function CrearPedido() {
               ))}
               
               <button type="button" onClick={addItem} style={{
-                background: 'rgba(15,110,86,0.05)', border: '2px dashed rgba(15,110,86,0.3)', borderRadius: 14,
-                color: '#0F6E56', padding: '12px', cursor: 'pointer', width: '100%',
-                fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                marginTop: 8, transition: 'all .2s'
+                background: '#0F6E56', border: 'none', borderRadius: 14,
+                color: '#ffffff', padding: '14px', cursor: 'pointer', width: '100%',
+                fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                marginTop: 8, boxShadow: '0 4px 14px rgba(15,110,86,0.3)', transition: 'transform .2s, box-shadow .2s'
               }}>
-                <span style={{ fontSize: 18, lineHeight: 1 }}>＋</span>
+                <span style={{ fontSize: 20, lineHeight: 1 }}>＋</span>
                 <span>Añadir medicamento</span>
               </button>
             </div>
