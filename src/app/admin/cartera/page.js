@@ -29,6 +29,11 @@ export default function CarteraYLiquidacion() {
   const [egresoMonto, setEgresoMonto] = useState('');
   const [savingEgreso, setSavingEgreso] = useState(false);
   
+  // States for Liquidacion Modal
+  const [modalData, setModalData] = useState(null); // { type: 'repartidor' | 'credito', pedido, defaultValor, maxValor, cliente }
+  const [modalValor, setModalValor] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => {
@@ -111,69 +116,76 @@ export default function CarteraYLiquidacion() {
 
   const formatearDinero = (num) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(num || 0);
 
-  const handleLiquidarRepartidor = async (pedidoId, valor, metodo) => {
-    if (!confirm(`¿Confirmas que recibiste físicamente ${formatearDinero(valor)} del repartidor?`)) return;
-    
-    // 1. Marcar pedido
-    await supabase.from('orders').update({ liquidado_admin: true }).eq('id', pedidoId);
-    
-    // 2. Registrar en ERP
-    await supabase.from('transactions').insert({
-      tipo: 'ingreso',
-      monto: valor,
-      metodo_pago: metodo || 'efectivo',
-      concepto: 'Liquidación de entrega',
-      referencia_id: pedidoId,
-      creado_por: user.id
-    });
-    
-    fetchData();
-  };
-
-  const handleLiquidarCredito = async (pedido) => {
-    const abonoStr = prompt(`El cliente DEBE: ${formatearDinero(pedido.saldo_pendiente)}\n\n¿Cuánto está abonando en este momento? (Ingresa el valor numérico sin puntos):`, pedido.saldo_pendiente);
-    
-    if (!abonoStr) return; // Canceló
-    const abono = parseFloat(abonoStr);
-    
-    if (isNaN(abono) || abono <= 0) {
-      alert("Valor inválido");
+  const handleConfirmModal = async () => {
+    if (!modalValor || isNaN(parseFloat(modalValor)) || parseFloat(modalValor) <= 0) {
+      alert("Por favor ingresa un valor numérico válido mayor a 0");
       return;
     }
 
-    if (abono > pedido.saldo_pendiente) {
-      alert(`No puedes abonar más de la deuda restante (${formatearDinero(pedido.saldo_pendiente)})`);
+    const valor = parseFloat(modalValor);
+
+    if (modalData.type === 'credito' && valor > modalData.maxValor) {
+      alert(`No puedes ingresar un valor mayor al esperado (${formatearDinero(modalData.maxValor)})`);
       return;
     }
 
-    const nuevoAbonado = pedido.abonado + abono;
-    const pagadoCompletamente = (nuevoAbonado >= pedido.total_deuda);
-    
-    if (!confirm(`Vas a registrar un abono por ${formatearDinero(abono)}. ${pagadoCompletamente ? '¡Esto cancelará la deuda por completo!' : `Quedará un saldo de ${formatearDinero(pedido.total_deuda - nuevoAbonado)}`}\n\n¿Confirmas?`)) return;
+    setIsSubmitting(true);
 
-    // 1. Marcar pedido (actualizar abono y si está totalmente pagado, liquidar)
-    const updatePayload = {};
-    if (pedido.hasOwnProperty('monto_abonado')) {
-      updatePayload.monto_abonado = nuevoAbonado;
+    try {
+      if (modalData.type === 'repartidor') {
+        const pedidoId = modalData.pedido.id;
+        const metodo = modalData.pedido.recaudo_metodo;
+        
+        // 1. Marcar pedido y actualizar el valor real recaudado (por si el repartidor puso 0 o 1 por error)
+        await supabase.from('orders').update({ 
+          liquidado_admin: true,
+          recaudo_valor: valor 
+        }).eq('id', pedidoId);
+        
+        // 2. Registrar ingreso en ERP
+        await supabase.from('transactions').insert({
+          tipo: 'ingreso',
+          monto: valor,
+          metodo_pago: metodo || 'efectivo',
+          concepto: 'Liquidación de entrega',
+          referencia_id: pedidoId,
+          creado_por: user.id
+        });
+      } else if (modalData.type === 'credito') {
+        const pedido = modalData.pedido;
+        const nuevoAbonado = pedido.abonado + valor;
+        const pagadoCompletamente = (nuevoAbonado >= pedido.total_deuda);
+        
+        const updatePayload = {};
+        if (pedido.hasOwnProperty('monto_abonado')) {
+          updatePayload.monto_abonado = nuevoAbonado;
+        }
+        if (pagadoCompletamente) {
+          updatePayload.liquidado_admin = true;
+          updatePayload.pagado = true;
+        }
+        
+        await supabase.from('orders').update(updatePayload).eq('id', pedido.id);
+        
+        await supabase.from('transactions').insert({
+          tipo: 'ingreso',
+          monto: valor,
+          metodo_pago: 'efectivo',
+          concepto: pagadoCompletamente ? 'Pago Total de Cartera' : 'Abono Parcial a Cartera',
+          referencia_id: pedido.id,
+          creado_por: user.id
+        });
+      }
+
+      setModalData(null);
+      setModalValor('');
+      fetchData();
+    } catch (e) {
+      alert("Ocurrió un error al procesar el pago");
+      console.error(e);
+    } finally {
+      setIsSubmitting(false);
     }
-    if (pagadoCompletamente) {
-      updatePayload.liquidado_admin = true;
-      updatePayload.pagado = true;
-    }
-    
-    await supabase.from('orders').update(updatePayload).eq('id', pedido.id);
-    
-    // 2. Registrar en ERP
-    await supabase.from('transactions').insert({
-      tipo: 'ingreso',
-      monto: abono,
-      metodo_pago: 'efectivo', // Por defecto
-      concepto: pagadoCompletamente ? 'Pago Total de Cartera' : 'Abono Parcial a Cartera',
-      referencia_id: pedido.id,
-      creado_por: user.id
-    });
-    
-    fetchData();
   };
 
   const handleRegistrarEgreso = async () => {
@@ -339,7 +351,16 @@ export default function CarteraYLiquidacion() {
                   <p style={{ margin: '2px 0 0', fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>{p.recaudo_metodo}</p>
                 </div>
                 <button 
-                  onClick={() => handleLiquidarRepartidor(p.id, p.recaudo_valor, p.recaudo_metodo)}
+                  onClick={() => {
+                    setModalData({
+                      type: 'repartidor',
+                      pedido: p,
+                      defaultValor: p.recaudo_valor,
+                      maxValor: p.recaudo_valor,
+                      cliente: p.cliente_nombre
+                    });
+                    setModalValor(p.recaudo_valor);
+                  }}
                   style={{ background: '#f0fdf4', color: '#16a34a', border: 'none', padding: '12px 20px', borderRadius: 16, fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 10px rgba(22,163,74,0.1)' }}
                 >
                   Recibir Plata
@@ -366,7 +387,16 @@ export default function CarteraYLiquidacion() {
                   <p style={{ margin: '4px 0 0', fontSize: 20, fontWeight: 900, color: '#ef4444' }}>- {formatearDinero(p.total_deuda)}</p>
                 </div>
                 <button 
-                  onClick={() => handleLiquidarCredito(p)}
+                  onClick={() => {
+                    setModalData({
+                      type: 'credito',
+                      pedido: p,
+                      defaultValor: p.saldo_pendiente,
+                      maxValor: p.saldo_pendiente,
+                      cliente: p.cliente_nombre
+                    });
+                    setModalValor(p.saldo_pendiente);
+                  }}
                   style={{ background: '#0F6E56', color: 'white', border: 'none', padding: '12px 20px', borderRadius: 16, fontWeight: 800, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 10px rgba(15,110,86,0.3)' }}
                 >
                   Cobrar Físico
@@ -485,7 +515,66 @@ export default function CarteraYLiquidacion() {
         ) : null}
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {/* ── MODAL DE LIQUIDACION ── */}
+      {modalData && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
+          <div style={{ background: 'white', borderRadius: 24, padding: 32, width: '100%', maxWidth: 420, boxShadow: '0 20px 40px rgba(0,0,0,0.15)', animation: 'slideUp 0.3s ease' }}>
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#d1fae5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, margin: '0 auto 16px' }}>
+                💰
+              </div>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#0f172a' }}>
+                {modalData.type === 'repartidor' ? 'Liquidar Repartidor' : 'Abono a Crédito'}
+              </h2>
+              <p style={{ margin: '8px 0 0', color: '#64748b', fontSize: 14 }}>
+                Cliente: <span style={{ fontWeight: 800, color: '#1e293b' }}>{modalData.cliente}</span>
+              </p>
+              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                Valor esperado: <span style={{ fontWeight: 700, color: '#10b981' }}>{formatearDinero(modalData.maxValor)}</span>
+              </p>
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 800, color: '#64748b', marginBottom: 8, textTransform: 'uppercase' }}>Valor Físico Recibido</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 18, fontWeight: 700 }}>$</span>
+                <input 
+                  type="number" 
+                  value={modalValor} 
+                  onChange={e => setModalValor(e.target.value)}
+                  placeholder="0"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '16px 16px 16px 40px', borderRadius: 16, border: '2px solid #e2e8f0', fontSize: 18, fontWeight: 800, color: '#0f172a', outline: 'none' }}
+                  autoFocus
+                />
+              </div>
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: '#94a3b8', textAlign: 'center' }}>
+                Modifica el valor si te entregaron una cantidad diferente.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button 
+                onClick={() => setModalData(null)}
+                style={{ flex: 1, padding: '16px', background: '#f1f5f9', border: 'none', borderRadius: 16, color: '#64748b', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleConfirmModal}
+                disabled={isSubmitting}
+                style={{ flex: 1, padding: '16px', background: 'linear-gradient(135deg, #0F6E56 0%, #0c5643 100%)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 15, cursor: isSubmitting ? 'not-allowed' : 'pointer', boxShadow: '0 8px 20px rgba(15,110,86,0.3)' }}
+              >
+                {isSubmitting ? 'Guardando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 }
