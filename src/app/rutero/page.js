@@ -463,38 +463,39 @@ export default function RuteroPage() {
           </div>
         </div>
 
-        {/* ── Alertas ── */}
-        {alerts.length > 0 && (
-          <div className={styles.section}>
-            <h2 className={styles.sectionTitle}>
-              <AlertIcon className={styles.iconWarning} /> Clientes sin visitar (+7 días)
-            </h2>
-            <div className={styles.alertList}>
-              {alerts.map((a) => (
-                <div key={a.id} className={styles.alertCard}>
-                  <div className={styles.alertIcon}><AlertIcon /></div>
-                  <div className={styles.alertContent}>
-                    <h4>{a.nombre}</h4>
-                    <p>
-                      Hace {a.dias_sin_visita > 1000 ? 'mucho tiempo' : `${a.dias_sin_visita} días`}
-                      {a.direccion ? ` — ${a.direccion}` : ''}
-                    </p>
-                    {a.dia_ruta && (
-                      <span className={styles.badgeSmall}>📅 {a.dia_ruta}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Rutero Grid (Mapa a la izquierda, Clientes a la derecha) ── */}
+        {/* ── Rutero Grid (Mapa y Alertas a la izq, Clientes a la der) ── */}
         <div className={styles.splitLayout}>
           
-          {/* Columna Izquierda: MAPA */}
+          {/* Columna Izquierda: ALERTAS y MAPA */}
           <div className={styles.leftColumn}>
-            <div className={styles.sectionHeader}>
+            
+            {/* ── Alertas ── */}
+            {alerts.length > 0 && (
+              <div className={styles.section}>
+                <h2 className={styles.sectionTitle}>
+                  <AlertIcon className={styles.iconWarning} /> Clientes sin visitar (+7 días)
+                </h2>
+                <div className={styles.alertList}>
+                  {alerts.map((a) => (
+                    <div key={a.id} className={styles.alertCard}>
+                      <div className={styles.alertIcon}><AlertIcon /></div>
+                      <div className={styles.alertContent}>
+                        <h4>{a.nombre}</h4>
+                        <p>
+                          Hace {a.dias_sin_visita > 1000 ? 'mucho tiempo' : `${a.dias_sin_visita} días`}
+                          {a.direccion ? ` — ${a.direccion}` : ''}
+                        </p>
+                        {a.dia_ruta && (
+                          <span className={styles.badgeSmall}>📅 {a.dia_ruta}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className={styles.sectionHeader} style={{ marginTop: alerts.length > 0 ? '16px' : '0' }}>
               <h2 className={styles.sectionTitle}>
                 <MapIcon className={styles.iconPrimary} /> Mapa de Ruta
               </h2>
