@@ -1,0 +1,674 @@
+.page {
+  min-height: 100vh;
+  background-color: var(--bg-color, #f4f6f8);
+  font-family: 'Outfit', sans-serif;
+  padding-bottom: 100px;
+}
+
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, var(--brand-dark, #084032) 0%, var(--brand, #0F6E56) 55%, var(--brand-light, #169c7a) 100%);
+  border-radius: 0 0 36px 36px;
+  padding: 60px 24px 32px;
+  position: relative;
+  overflow: hidden;
+  color: white;
+  box-shadow: 0 10px 30px rgba(15, 110, 86, 0.2);
+}
+
+.circles {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.circle1 {
+  position: absolute;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 70%);
+  top: -50px; right: -50px;
+}
+
+.circle2 {
+  position: absolute;
+  width: 150px; height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+  bottom: -20px; left: -20px;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+}
+
+.heroSubtitle {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  text-transform: capitalize;
+  margin-bottom: 4px;
+}
+
+.heroTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+/* ── Content ── */
+.content {
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-main, #2b3238);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+/* ── Progress Ring ── */
+.progressContainer {
+  background: var(--glass-bg, rgba(255,255,255,0.85));
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.4));
+  border-radius: 20px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+
+.progressRing {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+}
+
+.progressRing svg {
+  transform: rotate(-90deg);
+}
+
+.progressRingCircle {
+  transition: stroke-dashoffset 1s ease-in-out;
+}
+
+.progressCenter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progressPct {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--brand-dark, #084032);
+}
+
+.progressInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.progressTitle {
+  font-size: 0.9rem;
+  color: var(--text-muted, #6b7280);
+  margin: 0 0 4px;
+}
+
+.progressText {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--brand-dark, #084032);
+  margin: 0;
+  line-height: 1.1;
+}
+
+/* ── Alerts ── */
+.alertList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alertCard {
+  background: var(--glass-bg, rgba(255,255,255,0.85));
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 16px;
+  border-left: 4px solid #ef4444;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: slideUp 0.4s ease-out;
+}
+
+.alertIcon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.alertContent h4 {
+  margin: 0 0 4px;
+  color: var(--text-main, #2b3238);
+  font-size: 0.95rem;
+}
+
+.alertContent p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.badgeSmall {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 100px;
+  background: rgba(15, 110, 86, 0.1);
+  color: var(--brand, #0F6E56);
+  font-weight: 600;
+}
+
+/* ── Route Button ── */
+.btnRuta {
+  background: white;
+  border: 1.5px solid var(--brand, #0F6E56);
+  color: var(--brand, #0F6E56);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btnRuta:active {
+  transform: scale(0.97);
+  background: rgba(15, 110, 86, 0.05);
+}
+
+/* ── Map ── */
+.mapWrapper {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  animation: slideUp 0.4s ease-out;
+}
+
+.mapContainer {
+  height: 350px;
+  position: relative;
+}
+
+.mapFrame {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.btnRouteCalc {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--brand-dark, #084032) 0%, var(--brand, #0F6E56) 100%);
+  color: white;
+  border: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btnRouteCalc:active {
+  opacity: 0.85;
+}
+
+.routeInfoBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main, #2b3238);
+}
+
+.navLink {
+  color: #33ccff;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+/* ── Client Cards ── */
+.clientList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.clientCard {
+  background: var(--glass-bg, rgba(255,255,255,0.85));
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border, rgba(255,255,255,0.4));
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+  animation: popIn 0.3s ease-out both;
+}
+
+.clientHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.clientName {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main, #2b3238);
+  margin: 0;
+}
+
+.clientDetail {
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+/* ── Badges ── */
+.badge {
+  font-size: 0.72rem;
+  padding: 4px 10px;
+  border-radius: 100px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeWarning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+}
+
+.badgeSuccess {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+/* ── Check-in Button ── */
+.btnCheckin {
+  width: 100%;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btnCheckin:active {
+  transform: scale(0.97);
+}
+
+/* ── FAB ── */
+.fab {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, var(--brand-dark, #084032) 0%, var(--brand, #0F6E56) 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 6px 20px rgba(15, 110, 86, 0.4);
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 800;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fab:active {
+  transform: scale(0.9);
+}
+
+/* ── Modals ── */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.modalContainer {
+  background: white;
+  border-radius: 28px 28px 0 0;
+  padding: 16px 24px 32px;
+  width: 100%;
+  max-height: 92dvh;
+  overflow-y: auto;
+  animation: slideUpModal 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalHandle {
+  width: 40px;
+  height: 4px;
+  background: #d1d5db;
+  border-radius: 100px;
+  margin: 0 auto 20px;
+}
+
+.modalHeader {
+  margin-bottom: 20px;
+}
+
+.modalHeader h3 {
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+  color: var(--text-main, #2b3238);
+}
+
+.modalHeader p {
+  margin: 0;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.9rem;
+}
+
+/* ── GPS States ── */
+.gpsLoadingBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 0;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.9rem;
+}
+
+.distanceSuccess {
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 4px solid #10b981;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.distanceSuccess p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #065f46;
+}
+
+.distanceWarning {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 4px solid #f59e0b;
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.distanceWarning p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #92400e;
+}
+
+/* ── Form ── */
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.formLabel {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text-main, #2b3238);
+}
+
+.textarea {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--brand, #0F6E56);
+  box-shadow: 0 0 0 3px rgba(15, 110, 86, 0.1);
+  background: white;
+}
+
+.select {
+  width: 100%;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  background: #f8fafc;
+  box-sizing: border-box;
+  appearance: none;
+  cursor: pointer;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--brand, #0F6E56);
+  box-shadow: 0 0 0 3px rgba(15, 110, 86, 0.1);
+}
+
+/* ── Modal Footer ── */
+.modalFooter {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btnPrimary {
+  flex: 1;
+  background: linear-gradient(135deg, var(--brand-dark, #084032) 0%, var(--brand, #0F6E56) 100%);
+  color: white;
+  border: none;
+  padding: 15px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btnPrimary:active {
+  transform: scale(0.98);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btnSecondary {
+  flex: 0.6;
+  background: #f3f4f6;
+  color: var(--text-main, #2b3238);
+  border: none;
+  padding: 15px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.btnSecondary:active {
+  background: #e5e7eb;
+}
+
+/* ── Empty State ── */
+.emptyState {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted, #6b7280);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.emptyState p {
+  margin: 0;
+}
+
+/* ── Spinner ── */
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(15, 110, 86, 0.15);
+  border-top-color: var(--brand, #0F6E56);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* ── Animations ── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUpModal {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── SVG Icons ── */
+.iconPrimary {
+  color: var(--brand, #0F6E56);
+}
+
+.iconWarning {
+  color: #f59e0b;
+}
+
+.iconSuccess {
+  color: #10b981;
+}
+
+.iconError {
+  color: #ef4444;
+}
+
+.iconSmall {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+}
+
+.iconBtn {
+  width: 20px;
+  height: 20px;
+}
+
+.phoneLink {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.phoneLink:active {
+  color: var(--brand, #0F6E56);
+}
+
+.modalTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+  color: var(--text-main, #2b3238);
+}
