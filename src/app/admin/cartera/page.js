@@ -24,7 +24,7 @@ export default function CarteraYLiquidacion() {
   const [savingCierre, setSavingCierre] = useState(false);
   
   // States for new egreso
-  const [egresoCat, setEgresoCat] = useState('proveedores');
+  const [egresoCat, setEgresoCat] = useState('nomina');
   const [egresoConcepto, setEgresoConcepto] = useState('');
   const [egresoMonto, setEgresoMonto] = useState('');
   const [savingEgreso, setSavingEgreso] = useState(false);
@@ -439,7 +439,6 @@ export default function CarteraYLiquidacion() {
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: '#64748b', marginBottom: 6, textTransform: 'uppercase' }}>Categoría</label>
                   <select value={egresoCat} onChange={e => setEgresoCat(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: 14, fontWeight: 700, outline: 'none', background: '#f8fafc', color: '#334155' }}>
-                    <option value="proveedores">📦 Proveedores (Inventario)</option>
                     <option value="nomina">👥 Nómina / Sueldos</option>
                     <option value="arriendo">🏢 Arriendo</option>
                     <option value="servicios">💡 Servicios Públicos</option>
