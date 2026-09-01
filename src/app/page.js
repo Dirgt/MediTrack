@@ -246,18 +246,17 @@ export default function CrearPedido() {
   const [userGps, setUserGps] = useState(null);
 
   useEffect(() => {
-    const checkGps = () => {
-      const isGranted = localStorage.getItem('gps_granted') === 'true';
-      if (isGranted && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          setUserGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        }, () => {});
-      }
-    };
-    
-    checkGps();
-    window.addEventListener('gps_activated', checkGps);
-    return () => window.removeEventListener('gps_activated', checkGps);
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {
+        // GPS no disponible o denegado — la app sigue funcionando sin ordenar por cercanía
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
   }, []);
 
   const calcularDistancia = (lat1, lon1, lat2, lon2) => {
