@@ -253,6 +253,7 @@ export default function RuteroPage() {
       userPos: null,
       gpsLoading: true,
       gpsError: '',
+      proxima_visita: '',
     });
 
     if (!navigator.geolocation) {
@@ -299,7 +300,7 @@ export default function RuteroPage() {
   };
 
   const closeCheckIn = () => {
-    setCheckInModal({ show: false, client: null, distance: null, userPos: null, gpsLoading: false, gpsError: '' });
+    setCheckInModal({ show: false, client: null, distance: null, userPos: null, gpsLoading: false, gpsError: '', proxima_visita: '' });
     setCheckInObs('');
     setCheckInJustificacion('');
   };
@@ -332,6 +333,7 @@ export default function RuteroPage() {
         distancia_metros: distance,
         justificacion_lejania: isFarAway || isNoGPSClient ? checkInJustificacion : null,
         observaciones: checkInObs || null,
+        proxima_visita_agendada: checkInModal.proxima_visita || null,
       };
 
       const { error } = await supabase.from('visitas').insert(payload);
@@ -354,11 +356,11 @@ export default function RuteroPage() {
   const openExtModal = () => {
     setExtClientId('');
     setExtObs('');
-    setExtModal({ show: true });
+    setExtModal({ show: true, proxima_visita: '' });
   };
 
   const closeExtModal = () => {
-    setExtModal({ show: false });
+    setExtModal({ show: false, proxima_visita: '' });
     setExtClientId('');
     setExtObs('');
   };
@@ -373,6 +375,7 @@ export default function RuteroPage() {
         tipo_visita: 'llamada_externa',
         estado: 'completada',
         observaciones: extObs || null,
+        proxima_visita_agendada: extModal.proxima_visita || null,
       });
       if (error) throw error;
 
@@ -655,6 +658,17 @@ export default function RuteroPage() {
                   />
                 </div>
 
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Agendar próxima visita (opcional)</label>
+                  <input
+                    type="date"
+                    className={styles.input}
+                    value={checkInModal.proxima_visita || ''}
+                    onChange={(e) => setCheckInModal(p => ({ ...p, proxima_visita: e.target.value }))}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>Si eliges una fecha, el cliente volverá a aparecer en la ruta ese día de forma prioritaria.</p>
+                </div>
+
                 {(isFarAway || isNoGPSClient) && (
                   <div className={styles.formGroup}>
                     <label className={styles.formLabel}>
@@ -723,6 +737,16 @@ export default function RuteroPage() {
                 onChange={(e) => setExtObs(e.target.value)}
                 placeholder="Detalles de la llamada..."
                 rows={3}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel}>Agendar próxima llamada/visita (opcional)</label>
+              <input
+                type="date"
+                className={styles.input}
+                value={extModal.proxima_visita || ''}
+                onChange={(e) => setExtModal(p => ({ ...p, proxima_visita: e.target.value }))}
               />
             </div>
 
