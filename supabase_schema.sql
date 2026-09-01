@@ -11,7 +11,7 @@ CREATE TABLE public.profiles (
   creado_en timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Habilitar Row Level Security para perfiles
+-- Habilitar Row Level Security para perfilesa
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 -- comentario nuevo
 CREATE POLICY "Los perfiles son visibles por todos los autenticados" 
