@@ -489,20 +489,17 @@ export default function RuteroPage() {
           </div>
         )}
 
-        {/* ── Ruta de Hoy ── */}
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h2 className={styles.sectionTitle}>
-              <MapPinIcon className={styles.iconPrimary} /> Ruta de Hoy
-            </h2>
-            {todayClients.length > 0 && (
-              <button className={styles.btnRuta} onClick={() => setShowMap(!showMap)}>
-                {showMap ? '✕ Cerrar mapa' : <><MapIcon /> Ver mapa</>}
-              </button>
-            )}
-          </div>
-
-          {showMap && (
+        {/* ── Rutero Grid (Mapa a la izquierda, Clientes a la derecha) ── */}
+        <div className={styles.splitLayout}>
+          
+          {/* Columna Izquierda: MAPA */}
+          <div className={styles.leftColumn}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                <MapIcon className={styles.iconPrimary} /> Mapa de Ruta
+              </h2>
+            </div>
+            
             <div className={styles.mapWrapper}>
               <div className={styles.mapContainer}>
                 <iframe
@@ -527,55 +524,65 @@ export default function RuteroPage() {
                 </div>
               )}
             </div>
-          )}
+          </div>
 
-          {loading ? (
-            <div className={styles.emptyState}>
-              <div className={styles.spinner} />
-              <p>Cargando rutero...</p>
+          {/* Columna Derecha: LISTA DE CLIENTES */}
+          <div className={styles.rightColumn}>
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>
+                <MapPinIcon className={styles.iconPrimary} /> Por visitar hoy
+              </h2>
             </div>
-          ) : todayClients.length === 0 ? (
-            <div className={styles.emptyState}>
-              <CheckCircleIcon className={styles.iconSuccess} style={{ width: 64, height: 64, opacity: 0.8 }} />
-              <p>No hay clientes programados para hoy, o ya completaste tu ruta.</p>
-            </div>
-          ) : (
-            <div className={styles.clientList}>
-              {todayClients.map((client, i) => (
-                <div key={client.id} className={styles.clientCard} style={{ animationDelay: `${i * 0.06}s` }}>
-                  <div className={styles.clientHeader}>
-                    <h3 className={styles.clientName}>{client.nombre}</h3>
-                    {client.ultima_visita ? (
-                      <span className={`${styles.badge} ${styles.badgeSuccess}`}>Visitado</span>
-                    ) : (
-                      <span className={`${styles.badge} ${styles.badgeWarning}`}>Sin visitas</span>
+
+            {loading ? (
+              <div className={styles.emptyState}>
+                <div className={styles.spinner} />
+                <p>Cargando rutero...</p>
+              </div>
+            ) : todayClients.length === 0 ? (
+              <div className={styles.emptyState}>
+                <CheckCircleIcon className={styles.iconSuccess} style={{ width: 64, height: 64, opacity: 0.8 }} />
+                <p>No hay clientes programados para hoy, o ya completaste tu ruta.</p>
+              </div>
+            ) : (
+              <div className={styles.clientList}>
+                {todayClients.map((client, i) => (
+                  <div key={client.id} className={styles.clientCard} style={{ animationDelay: `${i * 0.06}s` }}>
+                    <div className={styles.clientHeader}>
+                      <h3 className={styles.clientName}>{client.nombre}</h3>
+                      {client.ultima_visita ? (
+                        <span className={`${styles.badge} ${styles.badgeSuccess}`}>Visitado</span>
+                      ) : (
+                        <span className={`${styles.badge} ${styles.badgeWarning}`}>Sin visitas</span>
+                      )}
+                    </div>
+                    {client.direccion && (
+                      <div className={styles.clientDetail}>
+                        <MapPinIcon className={styles.iconSmall} /> {client.direccion}{client.ciudad ? `, ${client.ciudad}` : ''}
+                      </div>
                     )}
+                    {client.telefono && (
+                      <div className={styles.clientDetail}>
+                        <a href={`tel:${client.telefono}`} className={styles.phoneLink}>
+                          <PhoneIcon className={styles.iconSmall} /> {client.telefono}
+                        </a>
+                      </div>
+                    )}
+                    <button 
+                      className={styles.btnCheckin} 
+                      onClick={() => openCheckIn(client)}
+                      style={{ opacity: isAdmin ? 0.5 : 1, cursor: isAdmin ? 'not-allowed' : 'pointer' }}
+                      disabled={isAdmin}
+                      title={isAdmin ? "Solo lectura en modo supervisor" : ""}
+                    >
+                      <CheckCircleIcon className={styles.iconBtn} /> Registrar Visita
+                    </button>
                   </div>
-                  {client.direccion && (
-                    <div className={styles.clientDetail}>
-                      <MapPinIcon className={styles.iconSmall} /> {client.direccion}{client.ciudad ? `, ${client.ciudad}` : ''}
-                    </div>
-                  )}
-                  {client.telefono && (
-                    <div className={styles.clientDetail}>
-                      <a href={`tel:${client.telefono}`} className={styles.phoneLink}>
-                        <PhoneIcon className={styles.iconSmall} /> {client.telefono}
-                      </a>
-                    </div>
-                  )}
-                  <button 
-                    className={styles.btnCheckin} 
-                    onClick={() => openCheckIn(client)}
-                    style={{ opacity: isAdmin ? 0.5 : 1, cursor: isAdmin ? 'not-allowed' : 'pointer' }}
-                    disabled={isAdmin}
-                    title={isAdmin ? "Solo lectura en modo supervisor" : ""}
-                  >
-                    <CheckCircleIcon className={styles.iconBtn} /> Registrar Visita
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+          
         </div>
       </main>
 

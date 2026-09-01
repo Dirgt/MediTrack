@@ -66,6 +66,35 @@
   gap: 24px;
 }
 
+/* ── Split Layout ── */
+.splitLayout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.leftColumn, .rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .splitLayout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .leftColumn {
+    flex: 1.2;
+    position: sticky;
+    top: 24px;
+  }
+  .rightColumn {
+    flex: 1;
+  }
+}
+
 .section {
   display: flex;
   flex-direction: column;
@@ -77,6 +106,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .sectionTitle {
@@ -264,6 +294,7 @@
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-main, #2b3238);
+  flex-wrap: wrap;
 }
 
 .navLink {
@@ -294,6 +325,7 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 10px;
+  gap: 8px;
 }
 
 .clientName {
@@ -301,6 +333,8 @@
   font-weight: 600;
   color: var(--text-main, #2b3238);
   margin: 0;
+  word-break: break-word;
+  flex: 1;
 }
 
 .clientDetail {
@@ -310,6 +344,7 @@
   align-items: center;
   gap: 4px;
   margin-bottom: 3px;
+  word-break: break-word;
 }
 
 /* ── Badges ── */
@@ -658,6 +693,7 @@
   display: flex;
   align-items: center;
   transition: color 0.2s;
+  word-break: break-all;
 }
 
 .phoneLink:active {
@@ -671,4 +707,5 @@
   margin: 0 0 6px;
   font-size: 1.3rem;
   color: var(--text-main, #2b3238);
+  flex-wrap: wrap;
 }
